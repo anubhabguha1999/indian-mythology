@@ -7,6 +7,7 @@ import { useIsMobile } from '@/hooks/useMediaQuery'
 import { useSectionLoadLock } from '@/hooks/useSectionLoadLock'
 import { unlockScroll } from '@/utils/scrollLock'
 import { detectInitialQuality, stepDown, type Quality } from '@/utils/quality'
+import { playThunder } from './audio/thunder'
 import { CinematicCanvas } from './CinematicCanvas'
 import { CinematicText } from './ui/CinematicText'
 import { Loader } from './ui/Loader'
@@ -58,7 +59,15 @@ export function MahadevExperience() {
   const skyReveal = useMotionValue(0.05)
   const rimIntensity = useMotionValue(0)
   const thirdEyeOpen = useMotionValue(0)
-  const signals: SceneSignals = { worldTime, stormIntensity, skyReveal, rimIntensity, thirdEyeOpen }
+  const thunderTrigger = useMotionValue(0)
+  const signals: SceneSignals = { worldTime, stormIntensity, skyReveal, rimIntensity, thirdEyeOpen, thunderTrigger }
+
+  // Thunder is real DOM/Web-Audio, not a Three.js object — it can't live
+  // inside <Canvas> the way Lightning's visual flash does, so it listens
+  // from out here instead. `thunderTrigger` doubles as the clap's own
+  // intensity (see Lightning in Clouds.tsx), which is why this reads the
+  // motion value's own next value rather than stormIntensity separately.
+  useEffect(() => thunderTrigger.on('change', (v) => playThunder(v)), [thunderTrigger])
 
   if (reducedMotion) return <StillnessStatic />
 

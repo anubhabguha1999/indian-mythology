@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { MotionValue } from 'framer-motion'
+import { setThunderMuted } from './thunder'
 
 const MUSIC_SRC = '/music.mp3'
 const BASE_VOLUME = 0.45
@@ -42,6 +43,10 @@ export function useAmbientAudio(enabled: boolean, stormIntensity?: MotionValue<n
     if (!audio) return
     audio.muted = muted
     if (!muted) audio.play().catch(() => undefined)
+    // Thunder rides the same mute switch and, more importantly, the same
+    // click — the one real user gesture that can actually unlock a Web
+    // Audio AudioContext.
+    setThunderMuted(muted)
   }, [muted])
 
   // Raudra nudges the volume up rather than changing anything about the

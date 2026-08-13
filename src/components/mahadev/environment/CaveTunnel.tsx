@@ -201,7 +201,19 @@ function AmphitheaterDome({ quality }: { quality: Quality }) {
       const z = pos.getZ(i)
       const n = fbm(x * 0.09, z * 0.09, 4) - 0.5
       const len = Math.hypot(x, y, z) || 1
-      const scale = 1 + n * 0.09
+      // The sphere's own boundary loop at theta=thetaStart (0.22, near the
+      // Y+ pole) is where the skylight actually opens — a perfect circle of
+      // latitude no matter how much the surface elsewhere gets displaced,
+      // since a uniform 9% radius wobble barely dents a 46-unit-radius rim
+      // once seen from the aerial pull-back. That clean circle framing a
+      // thin lingam read as a cartoon porthole rather than a broken rock
+      // opening: found by testing. Biasing extra noise amplitude toward
+      // the rim specifically (tapering off deeper into the dome, where the
+      // subtler wobble is correct) breaks that silhouette up without
+      // roughing up the whole interior.
+      const theta = Math.acos(THREE.MathUtils.clamp(y / len, -1, 1))
+      const rimCloseness = Math.max(0, 1 - (theta - 0.22) / 0.4)
+      const scale = 1 + n * (0.09 + rimCloseness * 0.55)
       pos.setXYZ(i, (x / len) * len * scale, (y / len) * len * scale, (z / len) * len * scale)
       tmp.set('#332c22').lerp(new THREE.Color('#4f4636'), Math.max(0, n))
       colors[i * 3] = tmp.r

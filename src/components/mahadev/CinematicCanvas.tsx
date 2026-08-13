@@ -83,7 +83,7 @@ export function CinematicCanvas({
       <Snowfall quality={quality} variant="skylight" />
       <Footprints />
       <Clouds quality={quality} stormIntensity={signals.stormIntensity} />
-      <Lightning worldTime={signals.worldTime} stormIntensity={signals.stormIntensity} />
+      <Lightning worldTime={signals.worldTime} stormIntensity={signals.stormIntensity} thunderTrigger={signals.thunderTrigger} quality={quality} />
       <MoonSky quality={quality} reveal={signals.skyReveal} />
 
       <Trishula quality={quality} />

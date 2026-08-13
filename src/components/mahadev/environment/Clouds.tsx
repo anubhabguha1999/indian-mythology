@@ -65,74 +65,222 @@ export function Clouds({ quality, stormIntensity }: { quality: Quality; stormInt
   )
 }
 
-/** Fixed jagged bolt paths near the peak, toggled on briefly rather than
- * regenerated per flash. Frequency and brightness both rise with
- * `stormIntensity`; driven by `worldTime` so it visibly freezes along with
- * everything else during the third-eye event. */
-const BOLT_PATHS: Array<Array<[number, number, number]>> = [
-  [
-    [-24, 148, -80],
-    [-18, 132, -74],
-    [-27, 118, -84],
-    [-20, 104, -76],
-    [-26, 92, -82],
-  ],
-  [
-    [20, 152, -60],
-    [13, 136, -66],
-    [22, 122, -56],
-    [14, 108, -64],
-    [21, 96, -58],
-  ],
-]
+/** A curve made of dead-straight segments between its points — Catmull-Rom
+ * (used everywhere else in this file for the smooth camera/terrain splines)
+ * rounds every corner it passes through, which is exactly wrong for a bolt:
+ * real lightning is a jagged, angular fracture, not a bent wire. */
+class PolylineCurve extends THREE.Curve<THREE.Vector3> {
+  private readonly pts: THREE.Vector3[]
+  constructor(pts: THREE.Vector3[]) {
+    super()
+    this.pts = pts
+  }
+  getPoint(t: number, target = new THREE.Vector3()) {
+    const segs = this.pts.length - 1
+    const segT = THREE.MathUtils.clamp(t, 0, 1) * segs
+    const i = Math.min(segs - 1, Math.floor(segT))
+    return target.copy(this.pts[i]).lerp(this.pts[i + 1], segT - i)
+  }
+}
 
-export function Lightning({ worldTime, stormIntensity }: { worldTime: MotionValue<number>; stormIntensity: MotionValue<number> }) {
+/** A jagged descent from `topY` to `bottomY` — most jitter through the
+ * middle, tapering to near-nothing at both ends so the strike actually
+ * starts at a point in the sky and ends at one near the peak, rather than
+ * fraying at either tip. */
+function jaggedPath(originX: number, originZ: number, topY: number, bottomY: number, segments: number, spread: number) {
+  const pts: THREE.Vector3[] = []
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments
+    const taper = Math.sin(t * Math.PI)
+    const y = THREE.MathUtils.lerp(topY, bottomY, t)
+    pts.push(new THREE.Vector3(originX + (Math.random() - 0.5) * spread * taper, y, originZ + (Math.random() - 0.5) * spread * 0.6 * taper))
+  }
+  return pts
+}
+
+interface Bolt {
+  core: THREE.TubeGeometry
+  glow: THREE.TubeGeometry
+  forkCore: THREE.TubeGeometry | null
+  forkGlow: THREE.TubeGeometry | null
+}
+
+function buildBolt(quality: Quality): Bolt {
+  const originX = (Math.random() - 0.5) * 60
+  const originZ = PEAK_SUMMIT[2] + (Math.random() - 0.5) * 30
+  const topY = PEAK_SUMMIT[1] + 45 + Math.random() * 25
+  const bottomY = PEAK_SUMMIT[1] - 8 + Math.random() * 20
+  const segments = quality === 'low' ? 7 : 11
+  const pts = jaggedPath(originX, originZ, topY, bottomY, segments, 14)
+  const tubular = quality === 'low' ? 40 : 70
+  const core = new THREE.TubeGeometry(new PolylineCurve(pts), tubular, 0.16, 5, false)
+  const glow = new THREE.TubeGeometry(new PolylineCurve(pts), tubular, 0.85, 6, false)
+
+  // Roughly a third of strikes throw off a shorter secondary fork partway
+  // down — never from the very top or bottom, so it reads as a branch off
+  // the main channel rather than a second unrelated bolt.
+  let forkCore: THREE.TubeGeometry | null = null
+  let forkGlow: THREE.TubeGeometry | null = null
+  if (Math.random() < 0.45) {
+    const branchAt = 2 + Math.floor(Math.random() * (pts.length - 4))
+    const branchStart = pts[branchAt]
+    const forkBottomY = branchStart.y - (8 + Math.random() * 14)
+    const forkPts = jaggedPath(branchStart.x, branchStart.z, branchStart.y, forkBottomY, Math.max(3, Math.floor(segments * 0.5)), 9)
+    forkPts[0] = branchStart
+    forkCore = new THREE.TubeGeometry(new PolylineCurve(forkPts), Math.floor(tubular * 0.5), 0.1, 5, false)
+    forkGlow = new THREE.TubeGeometry(new PolylineCurve(forkPts), Math.floor(tubular * 0.5), 0.55, 6, false)
+  }
+
+  return { core, glow, forkCore, forkGlow }
+}
+
+const BOLT_POOL_SIZE = 5
+
+/**
+ * A real strike, not a glowing wire: a jagged fractured path (occasionally
+ * forked), a hot white core inside a softer additive glow tube for the
+ * bloom pass to catch, and 2-3 rapid flickers per strike rather than one
+ * flat flash — the double/triple stutter that makes lightning read as
+ * electricity instead of a light switching on. Frequency and brightness
+ * both rise with `stormIntensity`; driven by `worldTime` so it freezes
+ * along with everything else during the third-eye event. `thunderTrigger`
+ * fires once per strike (not per flicker) for the thunderclap outside the
+ * canvas to sync to.
+ */
+export function Lightning({
+  worldTime,
+  stormIntensity,
+  thunderTrigger,
+  quality = 'high',
+}: {
+  worldTime: MotionValue<number>
+  stormIntensity: MotionValue<number>
+  thunderTrigger?: MotionValue<number>
+  quality?: Quality
+}) {
   const flashLight = useRef<THREE.PointLight>(null)
-  const boltMats = useRef<(THREE.MeshBasicMaterial | null)[]>([])
+  const washLight = useRef<THREE.HemisphereLight>(null)
   const nextFlashAt = useRef(4)
-  const activeUntil = useRef(0)
   const activeBolt = useRef(0)
+  const flickers = useRef<Array<{ start: number; end: number; strength: number }>>([])
 
-  const boltGeometries = useMemo(
-    () =>
-      BOLT_PATHS.map((pts) => {
-        const curve = new THREE.CatmullRomCurve3(pts.map(([x, y, z]) => new THREE.Vector3(x, y, z)))
-        return new THREE.TubeGeometry(curve, 20, 0.2, 6, false)
-      }),
-    [],
-  )
+  const bolts = useMemo(() => Array.from({ length: BOLT_POOL_SIZE }, () => buildBolt(quality)), [quality])
+  // One entry per bolt in `bolts`, each holding refs to that bolt's own
+  // core/glow/fork materials — the earlier draft packed all of these into
+  // one flat ref array addressed by hand-computed indices, which quietly
+  // left the fork's core material out of the loop that actually applies
+  // the flicker (it sat at a hardcoded, always-on opacity): found by
+  // testing. Per-bolt objects make "does this material get animated" a
+  // structural fact instead of an index-arithmetic one.
+  const matRefs = useRef<
+    Array<{
+      core: THREE.MeshBasicMaterial | null
+      glow: THREE.MeshBasicMaterial | null
+      forkCore: THREE.MeshBasicMaterial | null
+      forkGlow: THREE.MeshBasicMaterial | null
+    }>
+  >(bolts.map(() => ({ core: null, glow: null, forkCore: null, forkGlow: null })))
 
   useFrame(() => {
     const t = worldTime.get()
     const storm = stormIntensity.get()
     if (t > nextFlashAt.current && storm > 0.35) {
-      activeBolt.current = Math.floor(Math.random() * boltGeometries.length)
-      activeUntil.current = t + 0.1 + Math.random() * 0.07
+      activeBolt.current = Math.floor(Math.random() * bolts.length)
+      const flickerCount = 1 + Math.floor(Math.random() * 2)
+      let cursor = t
+      flickers.current = Array.from({ length: flickerCount }, (_, i) => {
+        const dur = 0.035 + Math.random() * 0.05
+        const seg = { start: cursor, end: cursor + dur, strength: i === 0 ? 1 : 0.35 + Math.random() * 0.4 }
+        cursor += dur + 0.02 + Math.random() * 0.06
+        return seg
+      })
       const gap = Math.max(0.6, 5 - storm * 4)
-      nextFlashAt.current = t + gap + Math.random() * gap * 0.6
+      nextFlashAt.current = cursor + gap + Math.random() * gap * 0.6
+      // Encodes the intensity the thunderclap should be built at, jittered
+      // so consecutive flashes at near-identical storm levels still count
+      // as a "change" outside the canvas (see SceneSignals.thunderTrigger).
+      thunderTrigger?.set(storm + Math.random() * 1e-4)
     }
-    const flashing = t < activeUntil.current
-    boltMats.current.forEach((m, i) => {
-      if (m) m.opacity = flashing && i === activeBolt.current ? 0.85 : 0
+
+    let strength = 0
+    for (const f of flickers.current) {
+      if (t >= f.start && t <= f.end) {
+        strength = f.strength
+        break
+      }
+    }
+
+    matRefs.current.forEach((refs, i) => {
+      const active = i === activeBolt.current ? strength : 0
+      if (refs.core) refs.core.opacity = active * 0.95
+      if (refs.glow) refs.glow.opacity = active * 0.4
+      if (refs.forkCore) refs.forkCore.opacity = active * 0.75
+      if (refs.forkGlow) refs.forkGlow.opacity = active * 0.32
     })
-    if (flashLight.current) flashLight.current.intensity = flashing ? 8 + storm * 16 : 0
+    if (flashLight.current) flashLight.current.intensity = strength * (10 + storm * 20)
+    if (washLight.current) washLight.current.intensity = strength * (0.5 + storm * 0.9)
   })
 
   return (
     <>
-      <pointLight ref={flashLight} position={PEAK_SUMMIT} color="#dfe6f2" intensity={0} distance={260} decay={1.3} />
-      {boltGeometries.map((geo, i) => (
-        <mesh key={i} geometry={geo}>
-          <meshBasicMaterial
-            ref={(el) => {
-              boltMats.current[i] = el
-            }}
-            color="#e6ecf6"
-            transparent
-            opacity={0}
-            depthWrite={false}
-          />
-        </mesh>
+      <pointLight ref={flashLight} position={PEAK_SUMMIT} color="#dfe6f2" intensity={0} distance={320} decay={1.15} />
+      {/* A broad, dim sky-wide wash on top of the focused point light above —
+          real lightning lights the whole underside of the storm, not just
+          the ground near the bolt. */}
+      <hemisphereLight ref={washLight} color="#eef3ff" groundColor="#0a0d10" intensity={0} />
+      {bolts.map((bolt, i) => (
+        <group key={i}>
+          <mesh geometry={bolt.glow}>
+            <meshBasicMaterial
+              ref={(el) => {
+                matRefs.current[i].glow = el
+              }}
+              color="#a9c8ff"
+              transparent
+              opacity={0}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+          <mesh geometry={bolt.core}>
+            <meshBasicMaterial
+              ref={(el) => {
+                matRefs.current[i].core = el
+              }}
+              color="#f5f9ff"
+              transparent
+              opacity={0}
+              depthWrite={false}
+            />
+          </mesh>
+          {bolt.forkCore && bolt.forkGlow && (
+            <>
+              <mesh geometry={bolt.forkGlow}>
+                <meshBasicMaterial
+                  ref={(el) => {
+                    matRefs.current[i].forkGlow = el
+                  }}
+                  color="#a9c8ff"
+                  transparent
+                  opacity={0}
+                  depthWrite={false}
+                  blending={THREE.AdditiveBlending}
+                />
+              </mesh>
+              <mesh geometry={bolt.forkCore}>
+                <meshBasicMaterial
+                  ref={(el) => {
+                    matRefs.current[i].forkCore = el
+                  }}
+                  color="#f5f9ff"
+                  transparent
+                  opacity={0}
+                  depthWrite={false}
+                />
+              </mesh>
+            </>
+          )}
+        </group>
       ))}
     </>
   )

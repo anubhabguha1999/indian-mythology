@@ -74,10 +74,21 @@ interface GradeKey {
 export const GRADE_KEYS: readonly GradeKey[] = [
   { t: 0.0, fog: VOID, fogDensity: 0.005, key: '#212a32', keyI: 0.4, amb: '#12151a', ambI: 0.22, rim: STONE, rimI: 0.06 },
   { t: 0.1, fog: STONE_DARK, fogDensity: 0.004, key: '#4c5860', keyI: 1.05, amb: '#232a30', ambI: 0.58, rim: ASH, rimI: 0.24 },
-  { t: 0.22, fog: STONE, fogDensity: 0.0045, key: '#56626a', keyI: 1.2, amb: '#29313a', ambI: 0.62, rim: ASH, rimI: 0.28 },
-  { t: 0.35, fog: STONE_DARK, fogDensity: 0.0095, key: '#525d66', keyI: 1.3, amb: '#2b323a', ambI: 0.68, rim: SLATE, rimI: 0.36 },
-  { t: 0.45, fog: STONE_DARK, fogDensity: 0.011, key: '#5c6670', keyI: 1.35, amb: '#2e353e', ambI: 0.7, rim: SACRED_GOLD, rimI: 0.46 },
-  { t: 0.55, fog: '#2c343b', fogDensity: 0.011, key: '#6b7680', keyI: 1.4, amb: '#2f3840', ambI: 0.66, rim: MIST, rimI: 0.34 },
+  // fogDensity through 0.22->0.45 raised well past what "hide the amphitheater
+  // until its own reveal chapter" first suggested — at the old values, the
+  // amphitheater's own light-grey floor (see AmphitheaterFloor) sat only
+  // ~75-80 units from the camera at these shots (see cameraShots.ts t=0.35/
+  // 0.45), and FogExp2's blend toward fog color at that distance and density
+  // left it more than half-unblended — a bright disc plainly visible down the
+  // tunnel during "Ganga in his hair", long before the presence chapter is
+  // supposed to reveal it. Peaks at 0.45 (still outside the amphitheater,
+  // see cameraShots.ts) then drops by 0.55, where the camera has actually
+  // crossed inside it and needs to see the space it's now in: found by
+  // testing against the actual camera/amphitheater distances, not guessed.
+  { t: 0.22, fog: STONE, fogDensity: 0.007, key: '#616d76', keyI: 1.4, amb: '#313944', ambI: 0.74, rim: ASH, rimI: 0.28 },
+  { t: 0.35, fog: STONE_DARK, fogDensity: 0.021, key: '#5c6771', keyI: 1.5, amb: '#333b44', ambI: 0.8, rim: SLATE, rimI: 0.36 },
+  { t: 0.45, fog: STONE_DARK, fogDensity: 0.024, key: '#5c6670', keyI: 1.35, amb: '#2e353e', ambI: 0.7, rim: SACRED_GOLD, rimI: 0.46 },
+  { t: 0.55, fog: '#2c343b', fogDensity: 0.012, key: '#6b7680', keyI: 1.4, amb: '#2f3840', ambI: 0.66, rim: MIST, rimI: 0.34 },
   { t: 0.65, fog: STONE, fogDensity: 0.0095, key: '#606a72', keyI: 1.25, amb: '#2e353e', ambI: 0.62, rim: ASH, rimI: 0.46 },
   { t: 0.75, fog: '#333c44', fogDensity: 0.0095, key: '#78828a', keyI: 1.3, amb: '#3a434c', ambI: 0.58, rim: PARCHMENT, rimI: 0.44 },
   { t: 0.84, fog: '#262d34', fogDensity: 0.008, key: SACRED_GOLD, keyI: 1.0, amb: '#2c333a', ambI: 0.48, rim: SACRED_GOLD, rimI: 0.52 },
@@ -101,8 +112,8 @@ interface ExposureKey {
 export const EXPOSURE_KEYS: readonly ExposureKey[] = [
   { t: 0.0, v: 0.9 },
   { t: 0.1, v: 1.2 },
-  { t: 0.22, v: 1.3 },
-  { t: 0.35, v: 1.25 },
+  { t: 0.22, v: 1.4 },
+  { t: 0.35, v: 1.4 },
   { t: 0.45, v: 1.3 },
   { t: 0.55, v: 1.4 },
   { t: 0.65, v: 1.25 },

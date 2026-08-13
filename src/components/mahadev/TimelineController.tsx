@@ -14,6 +14,13 @@ export interface SceneSignals {
   skyReveal: MotionValue<number>
   rimIntensity: MotionValue<number>
   thirdEyeOpen: MotionValue<number>
+  /** Bumped to a fresh random value by Lightning the instant a bolt fires —
+   * the one signal that crosses out of the canvas, since a `<Canvas>`'s own
+   * children can't reach the DOM-level Web Audio API directly. Read outside
+   * the canvas (see MahadevExperience) to trigger a synthesized thunderclap
+   * in sync with the flash it belongs to, rather than on some independent
+   * schedule that would drift apart from what's on screen. */
+  thunderTrigger: MotionValue<number>
 }
 
 /**
@@ -85,7 +92,15 @@ export function TimelineController({ progress, signals }: { progress: MotionValu
     const p = ease(smoothed.current)
 
     // --- third-eye freeze --------------------------------------------------
-    if (!hasTriggeredEye.current && smoothed.current > THIRD_EYE_T) {
+    // Gated on `p` (the eased value that the camera/grade/storm tracks all
+    // actually key off), not the raw `smoothed` scroll fraction — SHOTS'
+    // t=0.84 close-up is a position on the *eased* curve, and smoothstep
+    // pushes raw 0.84 up to ~0.93 on that curve. Gating on the raw value
+    // meant the freeze fired only once the camera had already glided past
+    // the mark close-up into the wide Raudra pull-back shot, so the mark
+    // opened while off-screen — intermittently, depending on how far scroll
+    // speed let it overshoot 0.84 in a single frame: found by testing.
+    if (!hasTriggeredEye.current && p > THIRD_EYE_T) {
       hasTriggeredEye.current = true
       frozen.current = true
       freezeElapsed.current = 0

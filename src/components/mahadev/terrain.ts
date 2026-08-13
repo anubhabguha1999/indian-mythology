@@ -118,13 +118,27 @@ export function terrainHeight(x: number, z: number): number {
   const jag = (fbm(x * 0.028, z * 0.028, 5) - 0.5) * 20
   const micro = (fbm(x * 0.2, z * 0.2, 3) - 0.5) * 3.4
 
+  // A Gaussian bump, left alone, is a perfectly smooth bell curve — exactly
+  // the "inflated balloon" silhouette that read as cartoonish in the
+  // aerial Raudra pull-back, where the peak sits in clean profile against
+  // the sky. `jag`/`micro` above are both too low-amplitude relative to
+  // the summit's own 108-unit height to survive that read at distance.
+  // Ridged noise (folding fbm around its midpoint into sharp creases
+  // instead of smooth hills) breaks that up with actual jagged rock —
+  // weighted by elevation so it bites into the upper slopes and summit,
+  // where a real mountain is bare broken rock, while leaving the lower
+  // valley/path noise alone rather than making the walkable approach spiky
+  // for no reason: found by testing against this exact shot.
+  const elevation = Math.min(1, Math.max(0, (peak + ridgeL + ridgeR) / 45))
+  const ridged = (1 - Math.abs(fbm(x * 0.05, z * 0.05, 4) * 2 - 1) - 0.5) * 34 * elevation
+
   // The path groove — a shallow, flattened trail cut into the noise so the
   // approach reads as a place feet have walked, not just "somewhere on the
   // slope". Falls off smoothly with distance from PATH_POINTS.
   const pathD = nearestPathDist(x, z)
   const groove = 5.5 * Math.exp(-(pathD * pathD) / (11 * 11))
 
-  return VALLEY_BASE + peak + ridgeL + ridgeR + jag + micro - groove
+  return VALLEY_BASE + peak + ridgeL + ridgeR + jag + micro + ridged - groove
 }
 
 /** Small, purely cosmetic per-vertex variation for terrain color — kept

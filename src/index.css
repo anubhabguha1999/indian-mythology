@@ -1,0 +1,219 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------------- */
+/* Design tokens — the Kali palette. Dark stays dark; gold & red are light
+   sources, not fills. See src/data/images.ts for the imagery layer.      */
+/* ---------------------------------------------------------------------- */
+@theme {
+  --color-obsidian: #030303;
+  --color-charcoal: #0b0909;
+  --color-crimson: #300708;
+  --color-blood: #7a1118;
+  --color-burgundy: #240408;
+  --color-gold: #b99345;
+  --color-divine: #e3c46a;
+  --color-ivory: #ede3d0;
+  --color-ash: #8a7f74;
+
+  --font-display: "Cinzel", "Times New Roman", serif;
+  --font-serif: "Cormorant Garamond", "Times New Roman", serif;
+  --font-sans: "Manrope", -apple-system, sans-serif;
+  --font-deva: "Noto Serif Devanagari", serif;
+
+  --ease-cinematic: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-veil: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --breakpoint-xs: 30rem;
+}
+
+@layer base {
+  * {
+    @apply border-ash/20;
+  }
+
+  html {
+    background: var(--color-obsidian);
+    color-scheme: dark;
+    scroll-behavior: auto;
+  }
+
+  body {
+    @apply bg-obsidian text-ivory font-sans antialiased;
+    overflow-x: hidden;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  ::selection {
+    background: var(--color-blood);
+    color: var(--color-ivory);
+  }
+
+  a,
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  :focus-visible {
+    outline: 1px solid var(--color-divine);
+    outline-offset: 4px;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+    letter-spacing: 0.01em;
+  }
+}
+
+@layer utilities {
+  .font-deva {
+    font-family: var(--font-deva);
+  }
+
+  .text-glow-gold {
+    text-shadow: 0 0 40px rgba(227, 196, 106, 0.35);
+  }
+
+  .text-glow-blood {
+    text-shadow: 0 0 50px rgba(122, 17, 24, 0.5);
+  }
+
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mask-fade-b {
+    mask-image: linear-gradient(to bottom, black 60%, transparent 100%);
+  }
+  .mask-fade-t {
+    mask-image: linear-gradient(to top, black 60%, transparent 100%);
+  }
+  .mask-fade-x {
+    mask-image: linear-gradient(
+      to right,
+      transparent 0%,
+      black 15%,
+      black 85%,
+      transparent 100%
+    );
+  }
+
+  .bg-radial-ember {
+    background: radial-gradient(
+      circle at 50% 50%,
+      var(--color-blood) 0%,
+      var(--color-burgundy) 35%,
+      transparent 70%
+    );
+  }
+
+  .vignette::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 40%,
+      rgba(3, 3, 3, 0.85) 100%
+    );
+  }
+
+  /* A much lighter vignette than the shared .vignette above — Mahadev's
+     own scene already darkens its edges via the renderer's own postFX
+     Vignette; stacking the shared class's heavy 0.85 darkness on top of
+     that was crushing the whole frame toward black, not just the corners. */
+  .vignette-soft::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(
+      ellipse at center,
+      transparent 55%,
+      rgba(3, 3, 3, 0.4) 100%
+    );
+  }
+}
+
+@keyframes kenburns {
+  0% {
+    transform: scale(1) translate3d(0, 0, 0);
+  }
+  100% {
+    transform: scale(1.09) translate3d(-1%, -1%, 0);
+  }
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -14px, 0);
+  }
+}
+
+/* Shiva page preloader — a thin sweeping highlight standing in for a
+   progress bar, since there's no real asset-loading progress to report. */
+@keyframes loaderSweep {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+@keyframes smoke-drift {
+  0% {
+    transform: translate3d(-4%, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(3%, -2%, 0) scale(1.12);
+  }
+  100% {
+    transform: translate3d(-4%, 0, 0) scale(1);
+  }
+}
+
+/* ---------------------------------------------------------------------- */
+/* Film grain — a fixed, cheap SVG-noise overlay. One instance, whole app. */
+/* ---------------------------------------------------------------------- */
+.grain-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------------------------------------------------------------------- */
+/* Custom cursor — only enabled by CustomCursor.tsx on fine-pointer desktop */
+/* ---------------------------------------------------------------------- */
+html.custom-cursor * {
+  cursor: none !important;
+}
+
+/* ---------------------------------------------------------------------- */
+/* Reduced motion — global safety net beneath per-component checks        */
+/* ---------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

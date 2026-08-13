@@ -4,12 +4,12 @@ import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
 import { Menu, Volume2, VolumeX, X } from 'lucide-react'
 import { SACRED_GOLD, UI_COOL } from '../mahadevPalette'
 
+// Down to the site's only two routes — Kali/Goddesses/Archive all pointed
+// at pages that no longer exist (Home now carries the whole Kali journey
+// inline as one continuous scroll).
 const MENU_LINKS = [
   { label: 'Home', to: '/' },
-  { label: 'The Mother — Kali', to: '/kali' },
   { label: 'Mahadev — Shiva', to: '/shiva' },
-  { label: 'The Divine Feminine', to: '/goddesses' },
-  { label: 'Archive', to: '/archive' },
 ]
 
 /** A small trident mark standing in for a logomark — drawn as thin strokes

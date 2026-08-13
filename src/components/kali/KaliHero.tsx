@@ -85,11 +85,13 @@ export function KaliHero() {
             transition={{ duration: 0.9, delay: 0.65, ease: [0.16, 1, 0.3, 1] }}
             className="mt-10 flex flex-wrap items-center gap-10"
           >
-            <CinematicButton to="/kali/story" variant="primary">
+            {/* Both used to navigate to separate /kali/story and
+                /kali/symbolism routes — that whole journey now lives
+                inline on this same page (see pages/Home/index.tsx), so
+                both scroll into it instead, same as /shiva's own
+                "Begin The Journey" pattern. */}
+            <CinematicButton variant="primary" onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}>
               Enter The Story
-            </CinematicButton>
-            <CinematicButton to="/kali/symbolism" variant="secondary">
-              Explore
             </CinematicButton>
           </motion.div>
         </div>

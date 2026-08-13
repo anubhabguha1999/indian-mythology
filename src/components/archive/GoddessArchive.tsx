@@ -13,10 +13,11 @@ interface GoddessArchiveProps {
 
 /**
  * SCENE 11 — THE DIVINE FEMININE.
- * One interactive archive, reused verbatim on the homepage teaser and the
- * full /goddesses page. Desktop: hovering a name floods the background
- * with her portrait. Touch devices get a vertical stack instead — hover
- * doesn't exist there, so the interaction shouldn't pretend it does.
+ * Desktop: hovering a name floods the background with her portrait. Touch
+ * devices get a vertical stack instead — hover doesn't exist there, so the
+ * interaction shouldn't pretend it does. Each entry's own `/#id` link is a
+ * same-page hash (a former standalone /goddesses page used to own that
+ * hash; it's gone, and this section is what `#id` now resolves against).
  */
 export function GoddessArchive({ heading = true, intro }: GoddessArchiveProps) {
   const hasFinePointer = useHasFinePointer()
@@ -98,7 +99,7 @@ function DesktopArchive({ active, onHover }: { active: Goddess; onHover: (id: st
         {goddesses.map((g, i) => (
           <Link
             key={g.id}
-            to={`/goddesses#${g.id}`}
+            to={`/#${g.id}`}
             data-cursor="OPEN"
             onMouseEnter={() => onHover(g.id)}
             onFocus={() => onHover(g.id)}
@@ -141,7 +142,7 @@ function MobileArchive() {
         <Link
           key={g.id}
           id={g.id}
-          to={`/goddesses#${g.id}`}
+          to={`/#${g.id}`}
           data-cursor="OPEN"
           className="relative flex h-40 items-end overflow-hidden"
         >

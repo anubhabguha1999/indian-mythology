@@ -59,19 +59,30 @@ function ManifestationPending() {
  * The complete Maa Kali cinematic experience — one continuous scroll,
  * eleven scenes plus the final beat. See CLAUDE.md / README for the
  * scene-by-scene motion rationale.
+ *
+ * KaliHero now lands first, ahead of the void/eyes/manifestation build-up
+ * — the same landing shape /shiva uses (OpeningHero, a still dramatic
+ * frame, *then* scrolling begins the deeper journey) rather than a slow
+ * fade-up before she's shown at all. The build-up scenes still exist, just
+ * as what scrolling *into* reveals next instead of what precedes arrival.
  */
 export function HomePage() {
   return (
     <>
-      <Navbar revealOnScroll />
+      {/* `revealOnScroll` used to hide the navbar until scrolled past the
+          void/eyes build-up that opened the page — now that KaliHero (a
+          real, immediately-legible frame) lands first instead, hiding the
+          only navigation affordance on that first screen was the bug the
+          same as /shiva's Header being visible from frame one. */}
+      <Navbar />
       <main>
+        <KaliHero />
         <VoidScene />
         <EyesScene />
         <Suspense fallback={<ManifestationPending />}>
           <ManifestationScene />
         </Suspense>
         <RevelationScene />
-        <KaliHero />
         <FormScene />
         <SymbolismScene />
         <StoryScene />

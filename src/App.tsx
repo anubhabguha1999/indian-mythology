@@ -10,13 +10,7 @@ import { PageTransition } from '@/components/transitions/PageTransition'
 import { shivaProfile } from '@/data/shiva'
 
 const HomePage = lazy(() => import('@/pages/Home').then((m) => ({ default: m.HomePage })))
-const KaliPage = lazy(() => import('@/pages/Kali').then((m) => ({ default: m.KaliPage })))
 const ShivaPage = lazy(() => import('@/pages/Shiva').then((m) => ({ default: m.ShivaPage })))
-const SymbolismPage = lazy(() => import('@/pages/Symbolism').then((m) => ({ default: m.SymbolismPage })))
-const StoryPage = lazy(() => import('@/pages/Story').then((m) => ({ default: m.StoryPage })))
-const TemplesPage = lazy(() => import('@/pages/Temples').then((m) => ({ default: m.TemplesPage })))
-const GoddessesPage = lazy(() => import('@/pages/Goddesses').then((m) => ({ default: m.GoddessesPage })))
-const ArchivePage = lazy(() => import('@/pages/Archive').then((m) => ({ default: m.ArchivePage })))
 const NotFoundPage = lazy(() => import('@/pages/NotFound').then((m) => ({ default: m.NotFoundPage })))
 
 function RouteFallback() {
@@ -95,71 +89,11 @@ export default function App() {
             }
           />
           <Route
-            path="/kali"
-            element={
-              <PageTransition>
-                <Suspense fallback={<RouteFallback />}>
-                  <KaliPage />
-                </Suspense>
-              </PageTransition>
-            }
-          />
-          <Route
-            path="/kali/symbolism"
-            element={
-              <PageTransition>
-                <Suspense fallback={<RouteFallback />}>
-                  <SymbolismPage />
-                </Suspense>
-              </PageTransition>
-            }
-          />
-          <Route
-            path="/kali/story"
-            element={
-              <PageTransition>
-                <Suspense fallback={<RouteFallback />}>
-                  <StoryPage />
-                </Suspense>
-              </PageTransition>
-            }
-          />
-          <Route
-            path="/kali/temples"
-            element={
-              <PageTransition>
-                <Suspense fallback={<RouteFallback />}>
-                  <TemplesPage />
-                </Suspense>
-              </PageTransition>
-            }
-          />
-          <Route
             path="/shiva"
             element={
               <PageTransition>
                 <Suspense fallback={<RouteFallback />}>
                   <ShivaPage />
-                </Suspense>
-              </PageTransition>
-            }
-          />
-          <Route
-            path="/goddesses"
-            element={
-              <PageTransition>
-                <Suspense fallback={<RouteFallback />}>
-                  <GoddessesPage />
-                </Suspense>
-              </PageTransition>
-            }
-          />
-          <Route
-            path="/archive"
-            element={
-              <PageTransition>
-                <Suspense fallback={<RouteFallback />}>
-                  <ArchivePage />
                 </Suspense>
               </PageTransition>
             }

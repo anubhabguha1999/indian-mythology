@@ -4,23 +4,15 @@ import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
 import { X } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
-const DEFAULT_CENTER_LINKS = [
-  { label: 'THE MOTHER', to: '/kali' },
-  { label: 'THE FORM', to: '/kali/symbolism' },
-  { label: 'THE STORY', to: '/kali/story' },
-  { label: 'TEMPLES', to: '/kali/temples' },
-  { label: 'ARCHIVE', to: '/archive' },
-]
+// Down to the site's only two routes — the former five-link chapter nav
+// (THE MOTHER/THE FORM/THE STORY/TEMPLES/ARCHIVE) pointed at pages that no
+// longer exist, since Home now carries that whole journey inline as one
+// continuous scroll (see pages/Home/index.tsx).
+const DEFAULT_CENTER_LINKS = [{ label: 'MAHADEV', to: '/shiva' }]
 
 const DEFAULT_MENU_LINKS = [
   { label: 'Home', to: '/' },
-  { label: 'The Mother', to: '/kali' },
-  { label: 'The Form', to: '/kali/symbolism' },
-  { label: 'The Story', to: '/kali/story' },
-  { label: 'Temples', to: '/kali/temples' },
-  { label: 'Raudra — Shiva', to: '/shiva' },
-  { label: 'The Divine Feminine', to: '/goddesses' },
-  { label: 'Archive', to: '/archive' },
+  { label: 'Mahadev — Shiva', to: '/shiva' },
 ]
 
 interface NavLink {

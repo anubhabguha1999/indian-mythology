@@ -69,7 +69,7 @@ export function ShivaPage() {
           <MahadevExperience />
         </Suspense>
       </main>
-      <Footer glyph={shivaProfile.devanagari} description={shivaProfile.description} creditsHref="/archive" creditsLabel="ARCHIVE" />
+      <Footer glyph={shivaProfile.devanagari} description={shivaProfile.description} />
     </>
   )
 }

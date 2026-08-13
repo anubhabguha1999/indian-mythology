@@ -1,5 +1,4 @@
 import { RevealText } from '@/components/typography/RevealText'
-import { CinematicButton } from '@/components/cinematic/CinematicButton'
 import { kaliTemples, type SacredPlace } from '@/data/temples'
 
 function TemplePanel({ temple }: { temple: SacredPlace }) {
@@ -25,8 +24,10 @@ function TemplePanel({ temple }: { temple: SacredPlace }) {
 /**
  * SCENE 09 — SACRED PLACES (home teaser).
  * Motion language: parallax via a horizontal, snap-scrolling filmstrip —
- * a journey across geography rather than a vertical pin. The full
- * cinematic version lives at /kali/temples.
+ * a journey across geography rather than a vertical pin. This filmstrip
+ * already shows every entry in `kaliTemples`, so there's no separate
+ * "full version" to link onward to (a former /kali/temples page did, and
+ * has since folded into the same one continuous page this scene lives on).
  */
 export function TemplesTeaser() {
   return (
@@ -50,11 +51,6 @@ export function TemplesTeaser() {
         {kaliTemples.map((temple) => (
           <TemplePanel key={temple.id} temple={temple} />
         ))}
-        <div className="flex w-[80vw] flex-shrink-0 snap-start items-center justify-center md:w-[20rem]">
-          <CinematicButton to="/kali/temples" variant="line">
-            View All Temples
-          </CinematicButton>
-        </div>
       </div>
     </section>
   )

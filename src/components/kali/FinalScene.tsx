@@ -13,8 +13,8 @@ function FinalStatic() {
         THE MOTHER REMAINS.
       </p>
       <p className="font-deva text-3xl text-divine md:text-5xl">माँ काली</p>
-      <CinematicButton to="/archive" variant="line">
-        Enter The Archive
+      <CinematicButton variant="line" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+        Return To The Beginning
       </CinematicButton>
     </section>
   )
@@ -24,7 +24,10 @@ function FinalStatic() {
  * FINAL SCENE.
  * Motion language: fade + light expansion — the Void's mirror image. The
  * same ember that opened the site returns, floods gold once, and settles
- * into darkness with a single line to the Archive. No button, no banner.
+ * into darkness with a single line back to the beginning. No button, no
+ * banner — this used to close on a line to a separate /archive page; that
+ * page is gone (the site is down to just / and /shiva now), so the only
+ * honest "next step" left from the very end of the scroll is the start of it.
  */
 export function FinalScene() {
   const reducedMotion = useReducedMotion()
@@ -78,8 +81,8 @@ export function FinalScene() {
         <motion.div aria-hidden="true" className="absolute inset-0 bg-obsidian" style={{ opacity: blackout }} />
 
         <motion.div style={{ opacity: ctaOpacity, pointerEvents: ctaPointer }} className="absolute">
-          <CinematicButton to="/archive" variant="line">
-            Enter The Archive
+          <CinematicButton variant="line" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            Return To The Beginning
           </CinematicButton>
         </motion.div>
       </div>

@@ -2,17 +2,20 @@ import { motion } from 'framer-motion'
 import { RevealText } from '@/components/typography/RevealText'
 import { CinematicButton } from '@/components/cinematic/CinematicButton'
 import { ParticleField } from '@/components/particles/ParticleField'
-import { images } from '@/data/images'
 import { kaliProfile } from '@/data/kali'
 
 /**
  * The moment of arrival, right after the Revelation completes. Static
  * relative to scroll (this is where the camera finally stops) — entrance
  * choreography plays once, on view.
+ *
+ * The portrait (public/kali/kali-portrait.png) is a supplied image, same
+ * as Shiva's page's OpeningHero — full-bleed here rather than confined to
+ * a side column, since that's this hero's own existing pattern (Ken Burns
+ * background + left-aligned text), not something built to match Shiva's
+ * split layout.
  */
 export function KaliHero() {
-  const portrait = images.kali.secondary
-
   return (
     <section className="relative flex min-h-screen items-end overflow-hidden bg-obsidian md:items-center">
       <motion.div
@@ -23,10 +26,15 @@ export function KaliHero() {
         transition={{ duration: 2.2, ease: [0.16, 1, 0.3, 1] }}
       >
         <img
-          src={portrait.src}
-          alt={portrait.alt}
-          className="h-full w-full animate-[kenburns_36s_ease-in-out_infinite_alternate] object-cover"
-          style={{ objectPosition: portrait.position }}
+          src="/kali/kali-portrait.png"
+          alt="Maa Kali, fierce-eyed with a golden crown and third eye, garlanded in skulls and red flowers, holding a blade before flames."
+          // A portrait-oriented image (1024x1536) cropped into a wide desktop
+          // viewport loses most of its height — object-cover's default 50%
+          // vertical anchor left the crown/face (the top ~30%) cropped off,
+          // centering on the torso/skulls instead. Desktop needs a much
+          // stronger top bias than the taller mobile viewport does, hence
+          // the two breakpoints rather than one fixed position.
+          className="h-full w-full animate-[kenburns_36s_ease-in-out_infinite_alternate] object-cover object-[50%_20%] md:object-[50%_17%]"
           loading="eager"
         />
         <div className="absolute inset-0 bg-gradient-to-r from-obsidian via-obsidian/40 to-transparent" />

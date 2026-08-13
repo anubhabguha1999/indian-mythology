@@ -5,6 +5,7 @@ import { Header } from '@/components/mahadev/ui/Header'
 import { ChapterIndicator } from '@/components/mahadev/ui/ChapterIndicator'
 import { ScrollIndicator } from '@/components/mahadev/ui/ScrollIndicator'
 import { Loader } from '@/components/mahadev/ui/Loader'
+import { OpeningHero } from '@/components/mahadev/ui/OpeningHero'
 import { useAmbientAudio } from '@/components/mahadev/audio/useAmbientAudio'
 import { useDocumentTitle } from '@/hooks/useDocumentTitle'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
@@ -63,6 +64,7 @@ export function ShivaPage() {
       <ChapterIndicator />
       <ScrollIndicator />
       <main>
+        <OpeningHero />
         <Suspense fallback={<MahadevPending />}>
           <MahadevExperience />
         </Suspense>

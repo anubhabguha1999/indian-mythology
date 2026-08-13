@@ -11,6 +11,7 @@ import { shivaProfile } from '@/data/shiva'
 
 const HomePage = lazy(() => import('@/pages/Home').then((m) => ({ default: m.HomePage })))
 const ShivaPage = lazy(() => import('@/pages/Shiva').then((m) => ({ default: m.ShivaPage })))
+const HanumanPage = lazy(() => import('@/pages/Hanuman').then((m) => ({ default: m.HanumanPage })))
 const NotFoundPage = lazy(() => import('@/pages/NotFound').then((m) => ({ default: m.NotFoundPage })))
 
 function RouteFallback() {
@@ -94,6 +95,16 @@ export default function App() {
               <PageTransition>
                 <Suspense fallback={<RouteFallback />}>
                   <ShivaPage />
+                </Suspense>
+              </PageTransition>
+            }
+          />
+          <Route
+            path="/hanuman"
+            element={
+              <PageTransition>
+                <Suspense fallback={<RouteFallback />}>
+                  <HanumanPage />
                 </Suspense>
               </PageTransition>
             }

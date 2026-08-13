@@ -2,6 +2,10 @@ interface FooterProps {
   /** Devanagari line — defaults to the site-wide Kali identity. */
   glyph?: string
   description?: string
+  /** A required attribution line for a supplied third-party asset (e.g.
+   * Hanuman.tsx's CC-BY-4.0 model) — kept as its own row, separate from
+   * `description`, so it stays legible rather than buried mid-paragraph. */
+  credit?: string
 }
 
 // The "IMAGE CREDITS" link used to point at /archive#credits — the Archive
@@ -11,6 +15,7 @@ interface FooterProps {
 export function Footer({
   glyph = 'माँ काली',
   description = "Presented with respect for the diversity of Hindu tradition. Accounts of Devi's stories vary by region, lineage and text — where a single telling is shown here, others exist.",
+  credit,
 }: FooterProps) {
   return (
     <footer className="relative border-t border-ivory/[0.06] bg-obsidian px-6 py-10 md:px-16">
@@ -18,6 +23,7 @@ export function Footer({
         <span className="font-deva text-base text-ivory/40">{glyph}</span>
         <p className="max-w-xl text-[11px] leading-relaxed tracking-wide text-ivory/35">{description}</p>
       </div>
+      {credit && <p className="mx-auto mt-4 max-w-[1600px] text-[10px] leading-relaxed tracking-wide text-ivory/25">{credit}</p>}
     </footer>
   )
 }

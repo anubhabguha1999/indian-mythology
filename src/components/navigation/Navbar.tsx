@@ -4,17 +4,18 @@ import { AnimatePresence, motion, useScroll, useTransform } from 'framer-motion'
 import { X } from 'lucide-react'
 import { cn } from '@/utils/cn'
 
-// Down to the site's only two routes — the former five-link chapter nav
-// (THE MOTHER/THE FORM/THE STORY/TEMPLES/ARCHIVE) pointed at pages that no
-// longer exist, since Home now carries that whole journey inline as one
-// continuous scroll (see pages/Home/index.tsx). Left empty rather than a
-// single "MAHADEV" link — that read as out of place on this Kali-titled
-// page; /shiva is still reachable via the hamburger MENU.
+// The former five-link chapter nav (THE MOTHER/THE FORM/THE STORY/TEMPLES/
+// ARCHIVE) pointed at pages that no longer exist, since Home now carries
+// that whole journey inline as one continuous scroll (see pages/Home/
+// index.tsx). Left empty rather than a single "MAHADEV" link — that read
+// as out of place on this Kali-titled page; the other pages are still
+// reachable via the hamburger MENU.
 const DEFAULT_CENTER_LINKS: NavLink[] = []
 
 const DEFAULT_MENU_LINKS = [
   { label: 'Home', to: '/' },
   { label: 'Mahadev — Shiva', to: '/shiva' },
+  { label: 'Hanuman — The Impossible', to: '/hanuman' },
 ]
 
 interface NavLink {

@@ -48,6 +48,19 @@ export function sampleTrack<T extends { t: number }>(t: number, keys: readonly T
   return lerpNum(keys[i][field] as unknown as number, keys[i + 1][field] as unknown as number, local)
 }
 
+/**
+ * 'centripetal', not the default 'catmullrom' (uniform) parametrization —
+ * uniform Catmull-Rom is well documented to overshoot into loops/cusps
+ * whenever consecutive control points have very different spacing, which
+ * every shot list here does by design (long slow approaches next to tight
+ * close-in beats). Confirmed directly: Hanuman's own SCALE pull-back
+ * (cameraShots.ts, t=0.65→0.75, a ~65-unit gap immediately followed by a
+ * ~200-unit gap) rendered as a nonsensical extreme close-up on his knee
+ * mid-transition instead of the intended pull-back — a textbook uniform-
+ * parametrization overshoot. Centripetal parametrization mathematically
+ * guarantees no cusps/loops regardless of how unevenly the control points
+ * are spaced, which is exactly the property every shot list here needs.
+ */
 export function buildSpline(points: ReadonlyArray<readonly [number, number, number]>): THREE.CatmullRomCurve3 {
-  return new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z)), false, 'catmullrom', 0.5)
+  return new THREE.CatmullRomCurve3(points.map(([x, y, z]) => new THREE.Vector3(x, y, z)), false, 'centripetal', 0.5)
 }

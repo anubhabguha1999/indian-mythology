@@ -76,6 +76,54 @@ export function hash1(i: number, channel = 0): number {
   return hash(i * 12.9898 + channel * 78.233, channel * 37.719 - i * 4.121)
 }
 
+/**
+ * A single irregular boulder — ridged-noise displacement over an
+ * icosahedron base, the same technique Hanuman.tsx's own carried-mountain
+ * rock uses, factored out here so every scattered rock in the scene reads
+ * as an actual weathered stone instead of a bare `dodecahedronGeometry`
+ * with zero subdivision. A raw Platonic solid at detail 0 has no curvature
+ * for light to fall across at all — every face is one flat shaded color,
+ * which is the literal definition of "faceted low-poly" the brief keeps
+ * flagging, confirmed directly from a screenshot showing exactly that: a
+ * scattered rock reading as a flat dark silhouette rather than a lit,
+ * rounded stone. `seed` offsets the noise sampling so instances built from
+ * the same radius/detail don't come out identical.
+ */
+export function buildRockGeometry(radius: number, detail: number, seed: number, baseColor: string): THREE.BufferGeometry {
+  const geo = new THREE.IcosahedronGeometry(radius, detail)
+  const pos = geo.attributes.position
+  const colors = new Float32Array(pos.count * 3)
+  const base = new THREE.Color(baseColor)
+  const dark = base.clone().multiplyScalar(0.6)
+  const light = base.clone().lerp(new THREE.Color('#8a8177'), 0.5)
+  const tmp = new THREE.Color()
+  const sx = seed * 17.3
+  const sz = seed * 41.7
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i)
+    const y = pos.getY(i)
+    const z = pos.getZ(i)
+    const len = Math.hypot(x, y, z) || 1
+    // Frequency scaled for these rocks' actual size (radius ~3-11), not
+    // the world-terrain scale the constants were originally tuned for —
+    // at radius 5, the original 0.09 multiplier gave under one full noise
+    // cycle across the whole rock (a smooth potato), confirmed directly
+    // from a screenshot showing exactly that flat, undetailed look.
+    const ridge = ridgedFbm(x * 0.4 + sx, z * 0.4 + sz, 4) - 0.5
+    const coarse = fbm(x * 0.15 + sx, z * 0.15 + sz, 3) - 0.5
+    const scale = 1 + ridge * 0.55 + coarse * 0.3
+    pos.setXYZ(i, (x / len) * len * scale, (y / len) * len * scale, (z / len) * len * scale)
+    tmp.copy(dark).lerp(light, THREE.MathUtils.clamp(ridge + 0.5, 0, 1))
+    colors[i * 3] = tmp.r
+    colors[i * 3 + 1] = tmp.g
+    colors[i * 3 + 2] = tmp.b
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+  pos.needsUpdate = true
+  geo.computeVertexNormals()
+  return geo
+}
+
 // --------------------------------------------------------------------------
 // Ground
 // --------------------------------------------------------------------------

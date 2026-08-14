@@ -192,7 +192,14 @@ export function TimelineController({ progress, signals }: { progress: MotionValu
       <color ref={bgRef} attach="background" args={['#0c0d0f']} />
       <ambientLight ref={ambientLight} intensity={0.12} />
       <primitive object={keyTarget} />
-      <directionalLight ref={keyLight} position={[40, 80, 20]} intensity={0.3} castShadow={false} />
+      {/* castShadow + a shadow camera frustum wide enough to cover the
+          ground/rock/mountain cluster around HANUMAN_GROUND (chapters.ts's
+          RAUDRA aside, he never actually leaves that spot) — this is what
+          actually grounds everything in contact shadow instead of the flat,
+          shadowless lighting the scene had before. */}
+      <directionalLight ref={keyLight} position={[40, 80, 20]} intensity={0.3} castShadow shadow-mapSize={[2048, 2048]}>
+        <orthographicCamera attach="shadow-camera" args={[-160, 160, 160, -20, 10, 420]} />
+      </directionalLight>
       <primitive object={rimTarget} />
       <directionalLight ref={rimLight} position={[-40, 40, -40]} intensity={0.1} />
     </>

@@ -22,6 +22,23 @@ const GADA_MESH_HINTS = ['gada', 'mace', 'club', 'weapon']
 function tameMaterial(mesh: THREE.Mesh) {
   const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
   for (const m of materials) {
+    // Forced opaque unconditionally, regardless of material class — the
+    // first attempt at this gated the fix behind `'roughness' in std`
+    // (i.e. MeshStandardMaterial only), and the ghost/see-through dhoti
+    // with a stray star-pattern bleeding through it was still there in
+    // a follow-up screenshot, meaning that specific material is some
+    // other class (MeshBasicMaterial/MeshPhysicalMaterial's own alpha
+    // path, etc.) that the roughness gate skipped entirely. Every
+    // THREE.Material has `transparent`/`opacity`, so this no longer
+    // needs to guess which subclass it's touching. The one legitimately
+    // transparent piece (the halo disc) is filtered out and hidden
+    // entirely before tameMaterial ever runs, so everything reaching
+    // this point is meant to be solid fabric/fur/skin/metal.
+    m.transparent = false
+    m.opacity = 1
+    m.depthWrite = true
+    m.alphaTest = 0
+
     const std = m as THREE.MeshStandardMaterial
     if (!('roughness' in std)) continue
     const name = (m.name || '').toLowerCase()
@@ -138,11 +155,18 @@ function Mountain({ quality }: { quality: Quality }) {
       // Ridged noise carves sharp broken cliffs/gullies instead of the old
       // smooth fbm bulge; a coarser second term breaks up the "one uniform
       // wrinkle frequency" look that still reads as a shader ball at a
-      // glance even once displaced.
-      const ridge = ridgedFbm(x * 0.05, z * 0.05, 5) - 0.5
-      const coarse = fbm(x * 0.018, z * 0.018, 3) - 0.5
-      const n = ridge * 0.7 + coarse * 0.5
-      const scale = 1 + n * 0.6 + Math.max(0, y / len) * 0.12
+      // glance even once displaced. Frequencies confirmed too low from a
+      // screenshot: at radius 26 the original 0.05/0.018 multipliers gave
+      // only 2-3 noise cycles across the whole object — smooth, gentle
+      // undulation, not the cragged surface it was meant to read as. A
+      // third, finer term adds actual micro-roughness at the scale a
+      // close-up camera (several shots sit within 20-30 units of this)
+      // can resolve.
+      const ridge = ridgedFbm(x * 0.16, z * 0.16, 5) - 0.5
+      const coarse = fbm(x * 0.05, z * 0.05, 3) - 0.5
+      const fine = fbm(x * 0.4 + 50, z * 0.4 + 50, 2) - 0.5
+      const n = ridge * 0.75 + coarse * 0.4 + fine * 0.18
+      const scale = 1 + n * 0.65 + Math.max(0, y / len) * 0.12
       pos.setXYZ(i, (x / len) * len * scale, (y / len) * len * scale, (z / len) * len * scale)
 
       // Strata banding — rings of alternating light/dark rock keyed to
@@ -178,21 +202,34 @@ function Mountain({ quality }: { quality: Quality }) {
       <mesh geometry={geometry} position={[0, 22, 0]} castShadow receiveShadow>
         <meshStandardMaterial vertexColors roughness={0.96} metalness={0} />
       </mesh>
+      {/* Same layered-canopy treatment as environment/Landscape.tsx's own
+          ScatterProps trees — a single cone read as an obvious toy-tree
+          silhouette (confirmed directly from a screenshot), and this
+          mountain sits close enough to several camera shots (the GADA/
+          REVEAL windows both frame it) that the difference is visible. */}
       {trees.map((tr, i) => (
         <group key={i} position={[tr.x, tr.y, tr.z]}>
-          <mesh position={[0, tr.s * 0.6, 0]}>
+          <mesh position={[0, tr.s * 0.6, 0]} castShadow receiveShadow>
             <cylinderGeometry args={[tr.s * 0.08, tr.s * 0.12, tr.s * 1.2, 5]} />
             <meshStandardMaterial color="#241a12" roughness={0.9} />
           </mesh>
-          <mesh position={[0, tr.s * 1.3, 0]}>
-            <coneGeometry args={[tr.s * 0.7, tr.s * 1.4, 6]} />
-            <meshStandardMaterial color="#33422b" roughness={0.85} />
-          </mesh>
+          {[0, 1, 2].map((tier) => (
+            <mesh key={tier} position={[0, tr.s * (1.05 + tier * 0.42), 0]} castShadow receiveShadow>
+              <coneGeometry args={[tr.s * (0.75 - tier * 0.14), tr.s * 0.7, 7]} />
+              <meshStandardMaterial color={tier === 1 ? '#33422b' : '#2e2418'} roughness={0.85} />
+            </mesh>
+          ))}
         </group>
       ))}
-      <mesh position={[16, 16, 8]} rotation={[0, -0.4, 0]}>
-        <planeGeometry args={[2.4, 26]} />
-        <meshStandardMaterial color="#cfe0e6" transparent opacity={0.55} roughness={0.3} side={THREE.DoubleSide} />
+      {/* Shrunk and tucked in close against the rock face — a screenshot
+          showed this reading as a huge pale flat wall dominating a third
+          of the frame rather than a small waterfall detail, plausibly
+          this plane foreshortening oddly from certain angles. Smaller and
+          closer to the rock's own silhouette bounds the worst case even
+          if a future camera angle catches it edge-on again. */}
+      <mesh position={[10, 8, 20]} rotation={[0, -0.4, 0]}>
+        <planeGeometry args={[1.1, 11]} />
+        <meshStandardMaterial color="#cfe0e6" transparent opacity={0.5} roughness={0.3} side={THREE.FrontSide} />
       </mesh>
     </group>
   )

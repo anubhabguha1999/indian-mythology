@@ -39,10 +39,16 @@ export function ChapterIndicator() {
   const isBlackness = activeLabel === 'BLACKNESS'
 
   return (
+    // Anchored below the header rather than vertically centered — a
+    // centered 8-row list' own bottom edge reached down far enough to
+    // collide with CinematicText's bottom-anchored story beats, confirmed
+    // directly from a screenshot showing the two overlapping into
+    // unreadable stacked text. Anchoring near the top keeps this list
+    // entirely clear of that zone regardless of how tall the list gets.
     <motion.div
       animate={{ opacity: isBlackness ? 0 : 1 }}
       transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-      className="pointer-events-none fixed left-8 top-1/2 z-30 hidden -translate-y-1/2 flex-col gap-4 md:left-12 md:flex"
+      className="pointer-events-none fixed left-8 top-28 z-30 hidden flex-col gap-3 md:left-12 md:flex"
     >
       {VISIBLE_CHAPTERS.map((c) => {
         const isActive = c.label === activeLabel

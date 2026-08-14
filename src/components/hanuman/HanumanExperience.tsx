@@ -102,7 +102,15 @@ export function HanumanExperience() {
               dpr={[1, isMobile ? 1.25 : 2]}
               camera={{ position: SHOTS[0].pos as unknown as [number, number, number], fov: SHOTS[0].fov, near: 0.4, far: 1400 }}
               gl={{ antialias: true, alpha: false }}
-              shadows={false}
+              // Real shadow mapping — this was off entirely before, which
+              // meant every mesh in the scene (ground, rocks, mountain,
+              // Hanuman himself) was lit with zero contact shadows no
+              // matter how much geometry/material detail went into them.
+              // Flat, shadowless lighting reads as "fake" before anything
+              // else does; 'soft' (PCFSoft) is the actual fix, not more
+              // geometry. quality==='low' still skips it (mobile/weak
+              // hardware), same tier boundary PostFX already uses.
+              shadows={quality === 'low' ? false : 'soft'}
               onCreated={(state) => {
                 state.gl.toneMappingExposure = 0.35
               }}

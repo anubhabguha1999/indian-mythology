@@ -8,7 +8,7 @@ import type { Quality } from '@/utils/quality'
 import { TimelineController, type SceneSignals } from './TimelineController'
 import { Landscape } from './environment/Landscape'
 import { Wind } from './environment/Wind'
-import { Clouds, Lightning } from './environment/SkyAtmosphere'
+import { Clouds, DynamicSky, HeroClouds, Lightning } from './environment/SkyAtmosphere'
 import { StormAtmosphere } from './environment/Battlefield'
 import { Hanuman } from './Hanuman'
 import { WARM_GOLD } from './hanumanPalette'
@@ -107,8 +107,14 @@ export function CinematicCanvas({
         <ProceduralSky />
       </Environment>
 
+      {/* The actual visible sky — a real Rayleigh/Mie scattering dome, not
+          the flat fog-color clear the scene had before. See DynamicSky's
+          own comment for the sun arc/storm-turbidity logic. */}
+      <DynamicSky easedProgress={signals.easedProgress} />
+
       <Landscape quality={quality} />
       <Wind quality={quality} windIntensity={signals.windIntensity} easedProgress={signals.easedProgress} />
+      {quality !== 'low' && <HeroClouds stormIntensity={signals.stormIntensity} />}
       <Clouds quality={quality} stormIntensity={signals.stormIntensity} />
       <Lightning worldTime={signals.worldTime} stormIntensity={signals.stormIntensity} />
       <StormAtmosphere quality={quality} stormIntensity={signals.stormIntensity} />

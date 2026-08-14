@@ -1,8 +1,79 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { Cloud, Clouds as DreiClouds, Sky as DreiSky } from '@react-three/drei'
 import type { MotionValue } from 'framer-motion'
 import * as THREE from 'three'
 import type { Quality } from '@/utils/quality'
+import { RAUDRA_T } from '../chapters'
+import { HANUMAN_GROUND } from '../terrain'
+
+/**
+ * A real physically-based sky (three.js's own Rayleigh/Mie scattering
+ * model, wrapped by drei — fully procedural, no texture/network fetch),
+ * replacing the flat fog-color background the scene had before. The sun
+ * arcs low-to-high-to-low across the whole scroll (grazing light at the
+ * open/close, higher through the reveal/scale stretch), and turbidity/
+ * rayleigh both climb through Raudra for a genuinely hazy, storm-heavy
+ * sky rather than the same clear-day sky the whole way through.
+ */
+export function DynamicSky({ easedProgress }: { easedProgress: MotionValue<number> }) {
+  const skyRef = useRef<THREE.Mesh<THREE.BoxGeometry, THREE.ShaderMaterial>>(null)
+  const sunPos = useMemo(() => new THREE.Vector3(), [])
+
+  useFrame(() => {
+    const p = THREE.MathUtils.clamp(easedProgress.get(), 0, 1)
+    const arc = Math.sin(p * Math.PI)
+    // Capped well below true midday (was 38°) — that peak landed at the
+    // same REVEAL/SCALE stretch hanumanPalette.ts's own EXPOSURE_KEYS also
+    // peaks at (both tuned independently), and the two stacked into a
+    // genuinely overexposed, blown-out-white sky confirmed directly from
+    // a screenshot. A lower ceiling keeps this a warm low-angle sun the
+    // whole way through rather than a bright noon sky fighting the grade.
+    const elevationDeg = THREE.MathUtils.lerp(3, 22, arc)
+    const azimuthDeg = THREE.MathUtils.lerp(70, 200, p)
+    const phi = THREE.MathUtils.degToRad(90 - elevationDeg)
+    const theta = THREE.MathUtils.degToRad(azimuthDeg)
+    sunPos.setFromSphericalCoords(1, phi, theta)
+
+    const raudra = THREE.MathUtils.smoothstep(p, RAUDRA_T - 0.02, RAUDRA_T + 0.03) * (1 - THREE.MathUtils.smoothstep(p, 0.94, 0.98))
+    const u = skyRef.current?.material.uniforms
+    if (!u) return
+    u.sunPosition.value.copy(sunPos)
+    u.turbidity.value = THREE.MathUtils.lerp(6, 20, raudra)
+    u.rayleigh.value = THREE.MathUtils.lerp(1.1, 3.2, raudra)
+  })
+
+  return <DreiSky ref={skyRef} distance={900} turbidity={6} rayleigh={1.1} mieCoefficient={0.006} mieDirectionalG={0.8} />
+}
+
+/** Two loose, large cloud formations sitting where the camera actually
+ * looks now (near HANUMAN_GROUND, not the old leap-altitude coordinates
+ * this scene used before the leap arc was removed — see the sprite Clouds
+ * below for that same fix). Real drei volumetric billboards rather than
+ * another sprite layer, for the one or two "hero" formations the SHADOW/
+ * RAUDRA beats actually need to read as physically present cloud mass. */
+export function HeroClouds({ stormIntensity }: { stormIntensity: MotionValue<number> }) {
+  const groupRef = useRef<THREE.Group>(null)
+  useFrame((_, delta) => {
+    const storm = stormIntensity.get()
+    if (!groupRef.current) return
+    groupRef.current.rotation.y += delta * (0.01 + storm * 0.025)
+    // Raudra's storm doesn't just add more cloud — the whole formation
+    // sinks lower and swells, the same "ceiling coming down" read real
+    // storm clouds have, rather than an unrelated new layer appearing.
+    groupRef.current.position.y = 150 - storm * 35
+    const s = 1 + storm * 0.5
+    groupRef.current.scale.set(s, 1 + storm * 0.3, s)
+  })
+  return (
+    <group ref={groupRef} position={[HANUMAN_GROUND[0], 150, HANUMAN_GROUND[2] - 40]}>
+      <DreiClouds material={THREE.MeshBasicMaterial}>
+        <Cloud seed={7} bounds={[90, 20, 60]} segments={30} volume={26} color="#cfd6de" opacity={0.55} fade={120} position={[30, 10, -20]} />
+        <Cloud seed={13} bounds={[70, 16, 50]} segments={22} volume={20} color="#b8c0cc" opacity={0.4} fade={120} position={[-40, -6, 10]} />
+      </DreiClouds>
+    </group>
+  )
+}
 
 function useSoftTexture() {
   return useMemo(() => {
@@ -20,14 +91,15 @@ function useSoftTexture() {
   }, [])
 }
 
-/** A layered cloud volume around the leap's peak altitude (y~150-220) —
- * thin and mostly still until `stormIntensity` rises for the sky/battle
- * stretch, per the brief's own "clouds should have realistic volume,
- * sunlight should scatter through them" instruction. Built from soft
- * sprite puffs (same technique as mahadev/environment/Clouds.tsx) rather
- * than a volumetric shader — real volumetrics are out of reach for
- * real-time web Three.js at this budget; layered soft sprites are the
- * honest approximation. */
+/** A thin, reactive haze layer of soft sprite puffs — cheap, per-frame
+ * reactive to stormIntensity in a way HeroClouds' real volumetrics aren't
+ * (those are closer to static set-dressing; this is the layer that
+ * actually thickens/lowers/spins faster as Raudra's storm builds).
+ * Anchored near HANUMAN_GROUND at a height the *current* camera path
+ * actually frames — this used to sit at the old leap arc's peak altitude
+ * (y~170, z~-170), a coordinate system that stopped meaning anything once
+ * the leap/battlefield were removed (terrain.ts), which meant the whole
+ * storm was drifting somewhere the camera never once pointed. */
 export function Clouds({ quality, stormIntensity }: { quality: Quality; stormIntensity: MotionValue<number> }) {
   const texture = useSoftTexture()
   const groupRef = useRef<THREE.Group>(null)
@@ -37,8 +109,8 @@ export function Clouds({ quality, stormIntensity }: { quality: Quality; stormInt
     () =>
       Array.from({ length: count }, (_, i) => {
         const angle = (i / count) * Math.PI * 2
-        const radius = 60 + (i % 4) * 30
-        return { angle, radius, y: (i % 4) * 14, scale: 40 + (i % 5) * 18 }
+        const radius = 50 + (i % 4) * 26
+        return { angle, radius, y: (i % 4) * 10, scale: 30 + (i % 5) * 14 }
       }),
     [count],
   )
@@ -53,7 +125,7 @@ export function Clouds({ quality, stormIntensity }: { quality: Quality; stormInt
   })
 
   return (
-    <group ref={groupRef} position={[0, 170, -170]}>
+    <group ref={groupRef} position={[HANUMAN_GROUND[0], 120, HANUMAN_GROUND[2] - 60]}>
       {puffs.map((p, i) => (
         <sprite key={i} position={[Math.cos(p.angle) * p.radius, p.y, Math.sin(p.angle) * p.radius]} scale={[p.scale, p.scale * 0.55, 1]}>
           <spriteMaterial map={texture} color="#cfd6de" transparent opacity={0.28} depthWrite={false} />
@@ -92,10 +164,10 @@ function jaggedPath(originX: number, originZ: number, topY: number, bottomY: num
 }
 
 function buildBolt(): THREE.TubeGeometry {
-  const originX = (Math.random() - 0.5) * 100
-  const originZ = -170 + (Math.random() - 0.5) * 100
-  const topY = 260 + Math.random() * 30
-  const bottomY = 100 + Math.random() * 40
+  const originX = HANUMAN_GROUND[0] + (Math.random() - 0.5) * 90
+  const originZ = HANUMAN_GROUND[2] - 60 + (Math.random() - 0.5) * 90
+  const topY = 190 + Math.random() * 25
+  const bottomY = 60 + Math.random() * 30
   const pts = jaggedPath(originX, originZ, topY, bottomY, 9, 18)
   return new THREE.TubeGeometry(new PolylineCurve(pts), 50, 0.22, 5, false)
 }
@@ -145,7 +217,14 @@ export function Lightning({ worldTime, stormIntensity }: { worldTime: MotionValu
 
   return (
     <>
-      <pointLight ref={flashLight} position={[0, 180, -170]} color="#dfe6f2" intensity={0} distance={340} decay={1.2} />
+      <pointLight
+        ref={flashLight}
+        position={[HANUMAN_GROUND[0], 130, HANUMAN_GROUND[2] - 60]}
+        color="#dfe6f2"
+        intensity={0}
+        distance={280}
+        decay={1.2}
+      />
       {bolts.map((geo, i) => (
         <mesh key={i} geometry={geo}>
           <meshBasicMaterial

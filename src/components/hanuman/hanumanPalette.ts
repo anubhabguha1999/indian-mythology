@@ -83,14 +83,18 @@ interface ExposureKey {
  * shadow/footstep/gada beats, holding brightest through the reveal and
  * scale pull-back, dipping for devotion's hush, dipping further for
  * Raudra's storm, then settling warm for the final stillness. */
+// Peaks trimmed back from 1.5/1.55/1.58 — those landed at the same REVEAL/
+// SCALE stretch DynamicSky's own sun-elevation arc also peaks at, and the
+// two independently-tuned brightness sources stacked into a genuinely
+// blown-out white sky, confirmed directly from a screenshot.
 export const EXPOSURE_KEYS: readonly ExposureKey[] = [
   { t: 0.0, v: 0.48 },
   { t: 0.08, v: 0.85 },
   { t: 0.18, v: 1.1 },
-  { t: 0.28, v: 1.4 },
-  { t: 0.4, v: 1.5 },
-  { t: 0.5, v: 1.55 },
-  { t: 0.65, v: 1.58 },
+  { t: 0.28, v: 1.3 },
+  { t: 0.4, v: 1.35 },
+  { t: 0.5, v: 1.4 },
+  { t: 0.65, v: 1.4 },
   { t: 0.75, v: 1.15 },
   { t: 0.85, v: 1.0 },
   { t: 0.94, v: 1.35 },

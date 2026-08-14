@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import type { MotionValue } from 'framer-motion'
 import * as THREE from 'three'
 import type { Quality } from '@/utils/quality'
-import { dawnGroundHeight, hash1, HANUMAN_GROUND } from '../terrain'
+import { buildRockGeometry, dawnGroundHeight, hash1, HANUMAN_GROUND } from '../terrain'
 
 function useSoftTexture() {
   return useMemo(() => {
@@ -160,6 +160,12 @@ function ShadowSweep({ easedProgress }: { easedProgress: MotionValue<number> }) 
   )
 }
 
+const REVEAL_ROCKS = [
+  { x: 18, z: -18, y: 3, s: 7 },
+  { x: 12, z: -25, y: 5, s: 5.5 },
+  { x: 23, z: -13, y: 2, s: 4.5 },
+] as const
+
 /** Real geometry, not a scripted opacity trick — placed directly in the
  * REVEAL camera's own path (cameraShots.ts's t=0.5-0.62 window cranes from
  * low/close up to face height) so the crane genuinely passes behind and
@@ -167,17 +173,19 @@ function ShadowSweep({ easedProgress }: { easedProgress: MotionValue<number> }) 
  * blocks him because it is physically between the lens and him at that
  * exact camera height, the same reason a real foreground element would. */
 function RevealRocks() {
-  const rocks = [
-    { x: 18, z: -18, y: 3, s: 7 },
-    { x: 12, z: -25, y: 5, s: 5.5 },
-    { x: 23, z: -13, y: 2, s: 4.5 },
-  ]
+  const geometries = useMemo(() => REVEAL_ROCKS.map((r, i) => buildRockGeometry(r.s, 2, i + 30, '#2a221a')), [])
   return (
     <group>
-      {rocks.map((r, i) => (
-        <mesh key={i} position={[r.x, r.y, r.z]} rotation={[hash1(i, 70) * 0.6, hash1(i, 71) * Math.PI * 2, hash1(i, 72) * 0.6]} castShadow>
-          <dodecahedronGeometry args={[r.s, 0]} />
-          <meshStandardMaterial color="#1c1712" roughness={0.96} metalness={0} />
+      {REVEAL_ROCKS.map((r, i) => (
+        <mesh
+          key={i}
+          geometry={geometries[i]}
+          position={[r.x, r.y, r.z]}
+          rotation={[hash1(i, 70) * 0.6, hash1(i, 71) * Math.PI * 2, hash1(i, 72) * 0.6]}
+          castShadow
+          receiveShadow
+        >
+          <meshStandardMaterial vertexColors roughness={0.94} metalness={0} />
         </mesh>
       ))}
     </group>

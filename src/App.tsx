@@ -9,6 +9,27 @@ import { LoadingScreen } from '@/components/transitions/LoadingScreen'
 import { PageTransition } from '@/components/transitions/PageTransition'
 import { shivaProfile } from '@/data/shiva'
 
+// Per-route splash profile — LoadingScreen.tsx's own props default to
+// Kali's name/colour (it's the site's oldest experience), which only ever
+// covered "/" correctly. /shiva was special-cased once already, but as a
+// single isShivaRoute ternary rather than a real per-route lookup, so the
+// same gap was still open for every route added after it — /hanuman
+// included, which is exactly why it opened on "काली"/KALI's gold-crimson
+// splash instead of its own. A route -> profile map closes that gap for
+// good instead of needing a new special case per future page.
+const ROUTE_SPLASH: Record<string, { devanagari: string; roman: string; gradient: string }> = {
+  '/shiva': {
+    devanagari: shivaProfile.devanagari,
+    roman: shivaProfile.name,
+    gradient: 'radial-gradient(circle, rgba(157,176,188,0.9) 0%, rgba(17,20,24,0.6) 55%, transparent 78%)',
+  },
+  '/hanuman': {
+    devanagari: 'हनुमान',
+    roman: 'HANUMAN',
+    gradient: 'radial-gradient(circle, rgba(201,154,74,0.95) 0%, rgba(28,20,15,0.6) 55%, transparent 78%)',
+  },
+}
+
 const HomePage = lazy(() => import('@/pages/Home').then((m) => ({ default: m.HomePage })))
 const ShivaPage = lazy(() => import('@/pages/Shiva').then((m) => ({ default: m.ShivaPage })))
 const HanumanPage = lazy(() => import('@/pages/Hanuman').then((m) => ({ default: m.HanumanPage })))
@@ -59,18 +80,18 @@ export default function App() {
   // This fires once, on the very first mount of the whole app — whichever
   // route the visitor actually landed on (a direct link or a refresh, not
   // just "/"). It used to announce "KALI" unconditionally regardless of
-  // that, which meant landing straight on /shiva still opened with a
-  // different deity's name: found by testing.
-  const isShivaRoute = location.pathname.startsWith('/shiva')
+  // that, which meant landing straight on /shiva (or /hanuman) still
+  // opened with a different deity's name: found by testing.
+  const splash = ROUTE_SPLASH[location.pathname]
 
   return (
     <>
       {loading && (
         <LoadingScreen
           onComplete={() => setLoading(false)}
-          devanagari={isShivaRoute ? shivaProfile.devanagari : undefined}
-          roman={isShivaRoute ? shivaProfile.name : undefined}
-          gradient={isShivaRoute ? 'radial-gradient(circle, rgba(157,176,188,0.9) 0%, rgba(17,20,24,0.6) 55%, transparent 78%)' : undefined}
+          devanagari={splash?.devanagari}
+          roman={splash?.roman}
+          gradient={splash?.gradient}
         />
       )}
 

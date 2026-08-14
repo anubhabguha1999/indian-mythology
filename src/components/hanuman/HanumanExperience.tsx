@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Component, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { useInView, useMotionValue } from 'framer-motion'
 import { useScrollProgress } from '@/hooks/useScrollProgress'
@@ -28,6 +28,31 @@ function StillnessStatic() {
       <p className="font-serif text-lg italic tracking-wide text-ivory/80">जय श्री राम</p>
     </section>
   )
+}
+
+/**
+ * Catches a crash anywhere inside the Canvas tree (a failed texture fetch,
+ * a WebGL context loss the renderer can't recover from, anything) and
+ * renders the same quiet closing card StillnessStatic uses instead of
+ * letting the failure propagate. Before this existed, an uncaught error
+ * inside the canvas (e.g. a network-fetched HDR failing in a sandboxed/
+ * offline browser — see CinematicCanvas.tsx's own ProceduralSky comment)
+ * had nothing to catch it, and the resulting remount-crash-remount cycle
+ * was what actually produced the "too many renders"/"WebGLRenderer:
+ * Context Lost" spam reported against this page — each failed remount
+ * tore down and recreated the GL context. A real error boundary means a
+ * future failure degrades to a still, readable card instead of a runaway
+ * loop.
+ */
+class CanvasErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  render() {
+    if (this.state.hasError) return <StillnessStatic />
+    return this.props.children
+  }
 }
 
 /**
@@ -72,24 +97,26 @@ export function HanumanExperience() {
     <section ref={ref} className="relative h-[1000vh] bg-[#0c0d0f]">
       <div ref={mountRef} className="sticky top-0 flex h-screen items-center justify-center overflow-hidden">
         {shouldMount && (
-          <Canvas
-            dpr={[1, isMobile ? 1.25 : 2]}
-            camera={{ position: SHOTS[0].pos as unknown as [number, number, number], fov: SHOTS[0].fov, near: 0.4, far: 1400 }}
-            gl={{ antialias: true, alpha: false }}
-            shadows={false}
-            onCreated={(state) => {
-              state.gl.toneMappingExposure = 0.35
-            }}
-            style={{ position: 'absolute', inset: 0 }}
-          >
-            <CinematicCanvas
-              progress={progress}
-              signals={signals}
-              quality={quality}
-              onReady={() => setReady(true)}
-              onQualityDecline={() => setQuality((q) => stepDown(q))}
-            />
-          </Canvas>
+          <CanvasErrorBoundary>
+            <Canvas
+              dpr={[1, isMobile ? 1.25 : 2]}
+              camera={{ position: SHOTS[0].pos as unknown as [number, number, number], fov: SHOTS[0].fov, near: 0.4, far: 1400 }}
+              gl={{ antialias: true, alpha: false }}
+              shadows={false}
+              onCreated={(state) => {
+                state.gl.toneMappingExposure = 0.35
+              }}
+              style={{ position: 'absolute', inset: 0 }}
+            >
+              <CinematicCanvas
+                progress={progress}
+                signals={signals}
+                quality={quality}
+                onReady={() => setReady(true)}
+                onQualityDecline={() => setQuality((q) => stepDown(q))}
+              />
+            </Canvas>
+          </CanvasErrorBoundary>
         )}
 
         {shouldMount && !ready && <Loader />}

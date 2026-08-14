@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import type { MotionValue } from 'framer-motion'
 import * as THREE from 'three'
 import type { Quality } from '@/utils/quality'
-import { dawnGroundHeight, hash1 } from '../terrain'
+import { dawnGroundHeight, hash1, HANUMAN_GROUND } from '../terrain'
 
 function useSoftTexture() {
   return useMemo(() => {
@@ -113,11 +113,12 @@ function Dust({ quality, windIntensity }: { quality: Quality; windIntensity: Mot
   )
 }
 
-// Ends just past the (now shorter) mountain-reveal chapter's own midpoint
-// — retimed to match chapters.ts's MOUNTAIN shrinking from 0.35-0.5 down
-// to 0.35-0.43 (see chapters.ts's own comment on why).
-const SHADOW_SWEEP_START = 0.16
-const SHADOW_SWEEP_END = 0.377
+// THE SHADOW is chapters.ts's own 0.18-0.28 window — the sweep starts a
+// touch before it (building as THE WIND ends) and finishes just as THE
+// FOOTSTEP begins, so the shadow crossing overhead hands off directly into
+// the foot landing rather than the two beats fighting for the same moment.
+const SHADOW_SWEEP_START = 0.15
+const SHADOW_SWEEP_END = 0.29
 
 /**
  * The giant shadow crossing the landscape (Scene 03) — a soft dark oval
@@ -159,6 +160,60 @@ function ShadowSweep({ easedProgress }: { easedProgress: MotionValue<number> }) 
   )
 }
 
+/** Real geometry, not a scripted opacity trick — placed directly in the
+ * REVEAL camera's own path (cameraShots.ts's t=0.5-0.62 window cranes from
+ * low/close up to face height) so the crane genuinely passes behind and
+ * around them. This is what gives "natural occlusion" its honesty: a rock
+ * blocks him because it is physically between the lens and him at that
+ * exact camera height, the same reason a real foreground element would. */
+function RevealRocks() {
+  const rocks = [
+    { x: 18, z: -18, y: 3, s: 7 },
+    { x: 12, z: -25, y: 5, s: 5.5 },
+    { x: 23, z: -13, y: 2, s: 4.5 },
+  ]
+  return (
+    <group>
+      {rocks.map((r, i) => (
+        <mesh key={i} position={[r.x, r.y, r.z]} rotation={[hash1(i, 70) * 0.6, hash1(i, 71) * Math.PI * 2, hash1(i, 72) * 0.6]} castShadow>
+          <dodecahedronGeometry args={[r.s, 0]} />
+          <meshStandardMaterial color="#1c1712" roughness={0.96} metalness={0} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/** A thin veil of mist sitting between the camera and Hanuman through the
+ * reveal — present (not zero) at the start of the window and thinning to
+ * nothing by the time his face is in frame, so the reveal itself feels like
+ * atmosphere clearing rather than a hard cut from hidden to visible. */
+function RevealMist({ easedProgress }: { easedProgress: MotionValue<number> }) {
+  const texture = useSoftTexture()
+  const ref = useRef<THREE.Group>(null)
+
+  useFrame(() => {
+    const p = easedProgress.get()
+    const local = THREE.MathUtils.clamp((p - 0.48) / (0.62 - 0.48), 0, 1)
+    const opacity = (1 - local) * 0.4
+    if (!ref.current) return
+    ref.current.children.forEach((child) => {
+      const mat = (child as THREE.Sprite).material as THREE.SpriteMaterial
+      mat.opacity = opacity
+    })
+  })
+
+  return (
+    <group ref={ref} position={[HANUMAN_GROUND[0], 14, HANUMAN_GROUND[2] + 22]}>
+      {[0, 1, 2].map((i) => (
+        <sprite key={i} position={[(i - 1) * 14, (i % 2) * 6 - 3, i * 3]} scale={[40, 22, 1]}>
+          <spriteMaterial map={texture} color="#cfd6de" transparent opacity={0} depthWrite={false} />
+        </sprite>
+      ))}
+    </group>
+  )
+}
+
 export function Wind({
   quality,
   windIntensity,
@@ -173,6 +228,8 @@ export function Wind({
       <GrassClumps quality={quality} windIntensity={windIntensity} />
       <Dust quality={quality} windIntensity={windIntensity} />
       <ShadowSweep easedProgress={easedProgress} />
+      <RevealRocks />
+      <RevealMist easedProgress={easedProgress} />
     </group>
   )
 }

@@ -4,8 +4,42 @@ import { useMemo, useRef } from 'react'
 import type { MotionValue } from 'framer-motion'
 import * as THREE from 'three'
 import type { Quality } from '@/utils/quality'
-import { fbm, hanumanHeadingAt, hanumanPositionAt, HANUMAN_GROUND, HANUMAN_HEIGHT } from './terrain'
+import { fbm, ridgedFbm, hanumanHeadingAt, hanumanPositionAt, HANUMAN_GROUND, HANUMAN_HEIGHT } from './terrain'
 import { STONE_GREY, WARM_GOLD } from './hanumanPalette'
+
+// The GLTF's own gold-ornament materials read plastic/neon out of the box
+// (high metalness paired with low roughness gives a mirror-chrome look
+// under a single key light) — matched by name substring, same technique
+// the halo-hiding logic below already uses, and pulled toward a duller,
+// scratched-metal response instead of a showroom one. The Gada specifically
+// is also singled out here: the brief's own complaint is that it dominates
+// the frame, and a big glossy highlight down its whole length is what makes
+// a large object read as *even larger* — killing that highlight (not its
+// size; the asset's proportions stay real) is most of the fix.
+const GOLD_MATERIAL_HINTS = ['gold', 'ornament', 'crown', 'armlet', 'bracelet']
+const GADA_MESH_HINTS = ['gada', 'mace', 'club', 'weapon']
+
+function tameMaterial(mesh: THREE.Mesh) {
+  const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+  for (const m of materials) {
+    const std = m as THREE.MeshStandardMaterial
+    if (!('roughness' in std)) continue
+    const name = (m.name || '').toLowerCase()
+    const isGold = GOLD_MATERIAL_HINTS.some((h) => name.includes(h))
+    if (isGold) {
+      // Aged metal, not a mirror: less metalness than an exporter default,
+      // more roughness so it only catches real highlights from the key/rim
+      // lights rather than glowing uniformly.
+      std.metalness = Math.min(std.metalness, 0.75)
+      std.roughness = Math.max(std.roughness, 0.42)
+    } else {
+      // Fur/skin/cloth — knock down whatever uniform gloss the exporter
+      // shipped with so it absorbs light instead of reading wet/plastic.
+      std.metalness = Math.min(std.metalness, 0.08)
+      std.roughness = Math.max(std.roughness, 0.75)
+    }
+  }
+}
 
 /**
  * Rijul Tekriwal's "Hanuman Ji" (Sketchfab, CC-BY-4.0 — attribution lives
@@ -45,6 +79,17 @@ function HanumanModel() {
       }
       mesh.castShadow = true
       mesh.receiveShadow = true
+      tameMaterial(mesh)
+      // The Gada, per direction, reads as dominating the frame — its own
+      // node/mesh name is the only lever available on a static, unrigged
+      // import (no separate prop to re-parent or re-scale independently).
+      // A modest scale-down around the mesh's own local origin rather than
+      // a global rescale of the whole figure: it's authored small enough
+      // to stay attached at the grip while visibly taking up less frame.
+      const meshName = (mesh.name || '').toLowerCase()
+      if (GADA_MESH_HINTS.some((h) => meshName.includes(h))) {
+        mesh.scale.multiplyScalar(0.86)
+      }
     })
     // Re-center on X/Z and drop feet to y=0, then scale so the model's own
     // authored height matches HANUMAN_HEIGHT regardless of what units it
@@ -71,24 +116,43 @@ function HanumanModel() {
  * broken-rock/tree/waterfall detail the brief asked for, just beside him
  * rather than in his hand. */
 function Mountain({ quality }: { quality: Quality }) {
-  const detail = quality === 'high' ? 3 : quality === 'medium' ? 2 : 1
+  // One notch higher than before at every tier — a low-poly, faceted
+  // silhouette is exactly the complaint this rebuilds away from, and the
+  // ridged displacement below only reads as real geology once there are
+  // enough vertices for it to actually carve into.
+  const detail = quality === 'high' ? 4 : quality === 'medium' ? 3 : 2
   const rock = useMemo(() => new THREE.Color(STONE_GREY), [])
   const geometry = useMemo(() => {
     const geo = new THREE.IcosahedronGeometry(26, detail)
     const pos = geo.attributes.position
     const colors = new Float32Array(pos.count * 3)
     const tmp = new THREE.Color()
+    const strataDark = new THREE.Color('#241f1a')
+    const strataLight = new THREE.Color('#7d7264')
+    const moss = new THREE.Color('#3a4530')
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
       const y = pos.getY(i)
       const z = pos.getZ(i)
       const len = Math.hypot(x, y, z) || 1
-      const n = fbm(x * 0.06, z * 0.06, 4) - 0.5
-      const scale = 1 + n * 0.45 + Math.max(0, y / len) * 0.1
+      // Ridged noise carves sharp broken cliffs/gullies instead of the old
+      // smooth fbm bulge; a coarser second term breaks up the "one uniform
+      // wrinkle frequency" look that still reads as a shader ball at a
+      // glance even once displaced.
+      const ridge = ridgedFbm(x * 0.05, z * 0.05, 5) - 0.5
+      const coarse = fbm(x * 0.018, z * 0.018, 3) - 0.5
+      const n = ridge * 0.7 + coarse * 0.5
+      const scale = 1 + n * 0.6 + Math.max(0, y / len) * 0.12
       pos.setXYZ(i, (x / len) * len * scale, (y / len) * len * scale, (z / len) * len * scale)
-      tmp.copy(rock).multiplyScalar(1 + n * 0.35)
-      const greenT = Math.max(0, y / len - 0.15)
-      tmp.lerp(new THREE.Color('#3a4530'), greenT * 0.45)
+
+      // Strata banding — rings of alternating light/dark rock keyed to
+      // height plus a little noise-driven waver, the detail that actually
+      // separates "sculpted rock formation" from "one flat grey material".
+      const heightBand = Math.sin((y / len) * 14 + ridge * 4) * 0.5 + 0.5
+      tmp.copy(strataDark).lerp(strataLight, heightBand).lerp(rock, 0.35)
+      tmp.multiplyScalar(0.85 + coarse * 0.3)
+      const greenT = Math.max(0, y / len - 0.2)
+      tmp.lerp(moss, greenT * 0.4)
       colors[i * 3] = tmp.r
       colors[i * 3 + 1] = tmp.g
       colors[i * 3 + 2] = tmp.b
@@ -112,7 +176,7 @@ function Mountain({ quality }: { quality: Quality }) {
   return (
     <group position={[HANUMAN_GROUND[0] - 55, 3, HANUMAN_GROUND[2] - 24]}>
       <mesh geometry={geometry} position={[0, 22, 0]} castShadow receiveShadow>
-        <meshStandardMaterial vertexColors roughness={0.9} metalness={0.03} />
+        <meshStandardMaterial vertexColors roughness={0.96} metalness={0} />
       </mesh>
       {trees.map((tr, i) => (
         <group key={i} position={[tr.x, tr.y, tr.z]}>
@@ -135,25 +199,16 @@ function Mountain({ quality }: { quality: Quality }) {
 }
 
 /**
- * Position/heading read each frame from `hanumanPositionAt`/
- * `hanumanHeadingAt` (terrain.ts), off the same eased progress the camera
- * curve itself rides — see TimelineController.tsx's own comment on why
- * that specific value, not the raw scroll fraction, is what everything
- * here has to agree on.
+ * Position read each frame from `hanumanPositionAt` (terrain.ts), off the
+ * same eased progress the camera curve itself rides — see
+ * TimelineController.tsx's own comment on why that specific value, not the
+ * raw scroll fraction, is what everything here has to agree on.
  *
- * The tilt during the leap went through three attempts before landing
- * here — the model has no skeleton, so the only lever available is
- * rotating the whole rigid body, and that has a hard ceiling: a fixed pose
- * (arms, legs, everything static) laid out flat and horizontal reads as a
- * mannequin no matter the angle, and a comet-tail/wobble bolted on top to
- * compensate read as a separate visual bug rather than motion (a stray
- * cone stuck to his foot, confirmed directly from the actual screenshots
- * rather than assumed). Removed both. What's left is a modest, capped
- * lean — present enough that he's clearly not standing bolt upright
- * mid-air, restrained enough that it never reaches the "lying flat" angle
- * that read as broken. This is the ceiling of what a static, unrigged
- * model can sell; an actually convincing leap pose needs a rigged/animated
- * source model, which this asset isn't.
+ * Per direction, he is stationary for the entire experience except one
+ * single step at Raudra (terrain.ts's STEP_START_T/STEP_END_T) — there is
+ * no more leap arc to pose for. The brief lean below only ever engages
+ * across that one brief window, reading as the weight-shift of one
+ * deliberate footfall rather than a sustained run.
  */
 export function Hanuman({ quality, easedProgress }: { quality: Quality; easedProgress: MotionValue<number> }) {
   const rootRef = useRef<THREE.Group>(null)
@@ -174,17 +229,11 @@ export function Hanuman({ quality, easedProgress }: { quality: Quality; easedPro
       hanumanPositionAt(Math.max(0, p - EPS), behindPos)
       const forwardSpeed = Math.hypot(aheadPos.x - behindPos.x, aheadPos.z - behindPos.z)
       const isMoving = forwardSpeed > 1e-6
-      // A constant forward lean while he's actually covering ground (see
-      // terrain.ts's own comment: no more aerial arc, so there's no climb
-      // angle left to derive a pitch from — this is a fixed sprint-lean
-      // instead). Negative here, not positive: rotation.x is applied
-      // before the heading yaw, and heading is already PI (180°) for this
-      // entire window (hanumanHeadingAt), which flips which sign reads as
-      // "forward" in world space — confirmed directly against a
-      // screenshot showing the positive sign leaning him backward while
-      // he moved forward.
-      const LEAN = 0.22
-      rootRef.current.rotation.x = isMoving ? -LEAN : 0
+      // A brief forward lean exactly across the one-step window — heading
+      // is 0 the whole experience now (hanumanHeadingAt), so a positive
+      // pitch here reads as leaning in his own facing direction.
+      const LEAN = 0.1
+      rootRef.current.rotation.x = isMoving ? LEAN : 0
       rootRef.current.rotation.z = 0
     }
   })

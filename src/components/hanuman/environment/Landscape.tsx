@@ -1,19 +1,19 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import type { Quality } from '@/utils/quality'
-import { battlefieldGroundHeight, dawnGroundHeight, fbm, hash1, HANUMAN_BATTLEFIELD, HANUMAN_GROUND } from '../terrain'
+import { dawnGroundHeight, fbm, ridgedFbm, hash1, HANUMAN_GROUND } from '../terrain'
 
 const GROUND_WIDTH = 900
-const GROUND_NEAR_Z = 110
+const GROUND_NEAR_Z = 160
 const GROUND_FAR_Z = -340
 
 const EARTH_DRY = new THREE.Color('#3a2b1f')
 const EARTH_DARK = new THREE.Color('#241a12')
-const EARTH_SCORCHED = new THREE.Color('#1c1310')
 
-/** One continuous ground strip — dry dawn earth blending into the more
- * churned, cracked battlefield further along, rather than two unrelated
- * planes that would seam visibly where the camera crosses between them. */
+/** One continuous ground plane — dry dawn earth the whole way, since per
+ * direction there's no separate battlefield any more; only Raudra's
+ * darkening grade (hanumanPalette.ts) and rising dust (Wind.tsx) mark the
+ * storm arriving, not a change in the earth itself. */
 function Ground({ quality }: { quality: Quality }) {
   const segX = quality === 'high' ? 180 : quality === 'medium' ? 120 : 70
   const segZ = quality === 'high' ? 260 : quality === 'medium' ? 170 : 100
@@ -28,14 +28,11 @@ function Ground({ quality }: { quality: Quality }) {
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
       const z = pos.getZ(i)
-      // Blend zone around the midpoint between the dawn ground and the
-      // battlefield's own churned earth, rather than a hard cut.
-      const battleT = THREE.MathUtils.smoothstep(-z, 120, 220)
-      const y = THREE.MathUtils.lerp(dawnGroundHeight(x, z), battlefieldGroundHeight(x, z), battleT)
+      const y = dawnGroundHeight(x, z)
       pos.setY(i, y)
 
-      const scorch = THREE.MathUtils.smoothstep(-z, 200, 280)
-      tmp.copy(EARTH_DRY).lerp(EARTH_DARK, battleT * 0.7).lerp(EARTH_SCORCHED, scorch)
+      const patch = fbm(x * 0.035, z * 0.035, 3)
+      tmp.copy(EARTH_DRY).lerp(EARTH_DARK, patch * 0.5)
       const shade = 1 + (fbm(x * 0.05, z * 0.05, 3) - 0.5) * 0.4
       tmp.multiplyScalar(shade)
       colors[i * 3] = tmp.r
@@ -60,21 +57,41 @@ function Ground({ quality }: { quality: Quality }) {
  * Hanuman later carries actually register as impossibly large by
  * comparison rather than just another hill. */
 function DistantRidge({ quality }: { quality: Quality }) {
-  const segments = quality === 'high' ? 96 : quality === 'medium' ? 64 : 36
+  // Higher resolution than before across the board — a peak silhouette
+  // this wide (1400 units) needs enough vertices for ridgedFbm's sharp
+  // breaks to actually show up on the skyline rather than smoothing back
+  // out into the same soft hill shape the old fbm gave it.
+  const segments = quality === 'high' ? 160 : quality === 'medium' ? 100 : 56
   const geometry = useMemo(() => {
     const width = 1400
     const depth = 300
-    const geo = new THREE.PlaneGeometry(width, depth, segments, 8)
+    const geo = new THREE.PlaneGeometry(width, depth, segments, 10)
     geo.rotateX(-Math.PI / 2)
     geo.translate(0, 40, -650)
     const pos = geo.attributes.position
+    const colors = new Float32Array(pos.count * 3)
+    const rockLow = new THREE.Color('#3a3128')
+    const rockHigh = new THREE.Color('#5c5148')
+    const tmp = new THREE.Color()
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i)
       const z = pos.getZ(i)
-      const ridge = (fbm(x * 0.006, 0, 5) - 0.3) * 120
+      // Two ridged octaves at different frequencies — one long-wavelength
+      // pass for the overall range's shape, one shorter pass so individual
+      // peaks along it break up independently instead of rising and
+      // falling as one uniform wave.
+      const range = ridgedFbm(x * 0.0035, 0, 5) * 150
+      const peaks = ridgedFbm(x * 0.014 + 40, 0, 4) * 55
+      const ridge = range * 0.75 + peaks * 0.5 - 45
       const falloff = 1 - Math.min(1, Math.abs(z + 650) / 150)
-      pos.setY(i, Math.max(0, ridge * falloff))
+      const y = Math.max(0, ridge * falloff)
+      pos.setY(i, y)
+      tmp.copy(rockLow).lerp(rockHigh, THREE.MathUtils.clamp(y / 90, 0, 1))
+      colors[i * 3] = tmp.r
+      colors[i * 3 + 1] = tmp.g
+      colors[i * 3 + 2] = tmp.b
     }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
     pos.needsUpdate = true
     geo.computeVertexNormals()
     return geo
@@ -82,7 +99,38 @@ function DistantRidge({ quality }: { quality: Quality }) {
 
   return (
     <mesh geometry={geometry}>
-      <meshStandardMaterial color="#332a24" roughness={0.9} metalness={0.02} fog />
+      <meshStandardMaterial vertexColors roughness={0.92} metalness={0} fog />
+    </mesh>
+  )
+}
+
+/** A soft vertical gradient wall well behind the ridge — pure atmospheric
+ * haze, the layer that sells "this range recedes into miles of humid air"
+ * rather than the ridge just stopping against the fog color with a visible
+ * edge. Cheap: one plane, one shader-free vertex-colored gradient, no
+ * texture. */
+function FarHaze() {
+  const geometry = useMemo(() => {
+    const geo = new THREE.PlaneGeometry(2000, 320, 1, 12)
+    const pos = geo.attributes.position
+    const colors = new Float32Array(pos.count * 3)
+    const top = new THREE.Color('#6b7a8c')
+    const bottom = new THREE.Color('#3a3228')
+    const tmp = new THREE.Color()
+    for (let i = 0; i < pos.count; i++) {
+      const yT = pos.getY(i) / 320 + 0.5
+      tmp.copy(bottom).lerp(top, yT)
+      colors[i * 3] = tmp.r
+      colors[i * 3 + 1] = tmp.g
+      colors[i * 3 + 2] = tmp.b
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+    return geo
+  }, [])
+
+  return (
+    <mesh geometry={geometry} position={[0, 130, -980]}>
+      <meshBasicMaterial vertexColors transparent opacity={0.55} depthWrite={false} fog />
     </mesh>
   )
 }
@@ -155,24 +203,10 @@ export function Landscape({ quality }: { quality: Quality }) {
   return (
     <group>
       <Ground quality={quality} />
+      <FarHaze />
       <DistantRidge quality={quality} />
       <ScatterProps quality={quality} />
       <ScaleFigure />
-      {/* A second, sparser scatter around the battlefield end — broken
-          ground, not a forest; Battlefield.tsx supplies the war debris. */}
-      <group position={[0, 0, 0]}>
-        {[0, 1, 2, 3].map((i) => {
-          const x = (hash1(i + 200, 1) - 0.5) * 160
-          const z = HANUMAN_BATTLEFIELD[2] + (hash1(i + 200, 2) - 0.5) * 120
-          const scale = 1.4 + hash1(i + 200, 3) * 2.4
-          return (
-            <mesh key={i} position={[x, battlefieldGroundHeight(x, z), z]}>
-              <dodecahedronGeometry args={[scale, 0]} />
-              <meshStandardMaterial color="#2a251f" roughness={0.95} />
-            </mesh>
-          )
-        })}
-      </group>
     </group>
   )
 }

@@ -139,17 +139,21 @@ function ShadowSweep({ easedProgress }: { easedProgress: MotionValue<number> }) 
       return
     }
     const local = (p - SHADOW_SWEEP_START) / (SHADOW_SWEEP_END - SHADOW_SWEEP_START)
-    mat.opacity = Math.sin(local * Math.PI) * 0.55
+    // Pushed darker and wider per direction ("make this part more
+    // dramatic") — 0.55 read as a soft grey pass-over; 0.78 actually
+    // reads as a shadow swallowing the ground ahead of him.
+    mat.opacity = Math.sin(local * Math.PI) * 0.78
     const z = THREE.MathUtils.lerp(80, -20, local)
     ref.current.position.set(0, dawnGroundHeight(0, z) + 0.15, z)
   })
 
   // A flat, ground-hugging plane rather than a sprite — a sprite always
   // billboards to face the camera, which reads as a floating disc, not a
-  // shadow actually cast across the terrain.
+  // shadow actually cast across the terrain. Widened alongside the
+  // opacity bump so the darker pass also feels bigger, not just blacker.
   return (
     <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]}>
-      <planeGeometry args={[70, 32]} />
+      <planeGeometry args={[92, 40]} />
       <meshBasicMaterial map={texture} color="#050403" transparent opacity={0} depthWrite={false} />
     </mesh>
   )

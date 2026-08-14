@@ -1,7 +1,7 @@
 import { motion, useTransform, type MotionValue } from 'framer-motion'
 import { STORY_WINDOWS } from '../chapters'
 import { hanumanOrigin } from '@/data/hanumanStory'
-import { UI_WARM, WARM_GOLD } from '../hanumanPalette'
+import { DEVOTION_GOLD, UI_WARM, WARM_GOLD } from '../hanumanPalette'
 
 /**
  * One story beat at a time, low on the frame, never centered and never
@@ -42,6 +42,11 @@ export function CinematicText({ progress }: { progress: MotionValue<number> }) {
 
   const finalGlyph = useTransform(progress, [0.975, 0.985, 1], [0, 1, 1])
   const finalMantra = useTransform(progress, [0.99, 1], [0, 1])
+  // A held-back scale-in rather than a flat fade — per direction ("make
+  // this part more dramatic"), the closing mantra earns its arrival
+  // instead of just appearing at full size the instant opacity crosses 0.
+  const finalScale = useTransform(progress, [0.975, 1], [0.88, 1])
+  const vignette = useTransform(progress, [0.975, 0.99, 1], [0, 0.55, 0.55])
 
   return (
     <div className="pointer-events-none absolute inset-0">
@@ -49,11 +54,21 @@ export function CinematicText({ progress }: { progress: MotionValue<number> }) {
         <StoryBeat key={chapter.id} opacity={opacities[i]} index={chapter.index} heading={chapter.heading} body={chapter.body} />
       ))}
 
-      <motion.div style={{ opacity: finalGlyph }} className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-6 text-center">
-        <p className="font-deva text-4xl text-ivory md:text-6xl" style={{ textShadow: `0 0 70px ${WARM_GOLD}44` }}>
+      {/* A soft dark vignette behind the closing mantra, radial-out from
+          center, so the gold title actually separates from the scene
+          behind it instead of sitting flat on top of it. */}
+      <motion.div
+        style={{ opacity: vignette, background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(0,0,0,0.75), transparent 70%)' }}
+        className="pointer-events-none absolute inset-0"
+      />
+      <motion.div style={{ opacity: finalGlyph, scale: finalScale }} className="absolute inset-x-0 top-1/2 -translate-y-1/2 px-6 text-center">
+        <p
+          className="font-deva text-4xl md:text-6xl"
+          style={{ color: DEVOTION_GOLD, textShadow: `0 0 90px ${WARM_GOLD}, 0 0 24px ${WARM_GOLD}aa` }}
+        >
           श्री हनुमते नमः
         </p>
-        <motion.p style={{ opacity: finalMantra }} className="mt-5 font-serif text-lg italic text-ivory/70 md:text-2xl">
+        <motion.p style={{ opacity: finalMantra }} className="mt-5 font-serif text-lg italic tracking-wide text-ivory/80 md:text-2xl">
           जय श्री राम
         </motion.p>
       </motion.div>

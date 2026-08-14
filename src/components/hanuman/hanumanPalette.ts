@@ -61,7 +61,12 @@ const MOON_SILVER = '#7d93a6'
 export const GRADE_KEYS: readonly GradeKey[] = [
   { t: 0.0, fog: CHARCOAL, fogDensity: 0.006, key: '#1c2438', keyI: 0.22, amb: '#0a0b10', ambI: 0.12, rim: '#4a5f7a', rimI: 0.22 },
   { t: 0.1, fog: '#242d42', fogDensity: 0.0045, key: '#3a4d75', keyI: 0.65, amb: '#141a26', ambI: 0.22, rim: '#5a7090', rimI: 0.42 },
-  { t: 0.2, fog: '#4a4048', fogDensity: 0.004, key: '#8a6858', keyI: 1.05, amb: '#221c22', ambI: 0.26, rim: MOON_SILVER, rimI: 0.6 },
+  // THE SHADOW (chapter 03, t=0.2-0.35) pushed more dramatic per direction
+  // — deeper ambient falloff so the dark side of the diagonal split
+  // actually goes dark instead of grey, a punchier key, and a stronger
+  // cool rim so his silhouette separates hard from the shadow behind him,
+  // closer to the devotional-card reference's own high-contrast look.
+  { t: 0.2, fog: '#443840', fogDensity: 0.0044, key: '#9a6f58', keyI: 1.25, amb: '#161014', ambI: 0.16, rim: MOON_SILVER, rimI: 0.9 },
   { t: 0.35, fog: '#7a5c44', fogDensity: 0.0035, key: SUNRISE_AMBER, keyI: 1.6, amb: '#3a2c22', ambI: 0.32, rim: MOON_SILVER, rimI: 0.78 },
   { t: 0.43, fog: '#8c6a40', fogDensity: 0.003, key: WARM_GOLD, keyI: 1.75, amb: '#4a3620', ambI: 0.34, rim: BURNT_ORANGE, rimI: 0.85 },
   { t: 0.51, fog: '#4c5a70', fogDensity: 0.0022, key: '#d2dcea', keyI: 1.75, amb: '#2c3542', ambI: 0.3, rim: '#c8d4e6', rimI: 0.75 },

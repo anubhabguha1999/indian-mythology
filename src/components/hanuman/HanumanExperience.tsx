@@ -12,14 +12,20 @@ import { CinematicText } from './ui/CinematicText'
 import { Loader } from './ui/Loader'
 import { SHOTS } from './cameraShots'
 import type { SceneSignals } from './TimelineController'
+import { DEVOTION_GOLD, WARM_GOLD } from './hanumanPalette'
 
 const READY_TIMEOUT_MS = 8000
 
+// The reduced-motion fallback's own closing card — same gold-and-glow
+// treatment as CinematicText's scroll-driven version, so someone with
+// motion reduced on doesn't get a visibly flatter/less dramatic ending.
 function StillnessStatic() {
   return (
     <section className="relative flex min-h-[85vh] flex-col items-center justify-center gap-6 bg-gradient-to-b from-[#241a12] via-[#1a130e] to-[#0c0d0f] px-6 text-center">
-      <p className="font-deva text-3xl text-ivory md:text-5xl">श्री हनुमते नमः</p>
-      <p className="font-serif text-lg italic text-ivory/60">जय श्री राम</p>
+      <p className="font-deva text-3xl md:text-5xl" style={{ color: DEVOTION_GOLD, textShadow: `0 0 90px ${WARM_GOLD}, 0 0 24px ${WARM_GOLD}aa` }}>
+        श्री हनुमते नमः
+      </p>
+      <p className="font-serif text-lg italic tracking-wide text-ivory/80">जय श्री राम</p>
     </section>
   )
 }
